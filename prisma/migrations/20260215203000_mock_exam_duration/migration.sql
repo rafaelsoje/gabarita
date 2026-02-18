@@ -1,0 +1,2 @@
+ALTER TABLE "MockExam"
+ADD COLUMN IF NOT EXISTS "durationMinutes" INTEGER;

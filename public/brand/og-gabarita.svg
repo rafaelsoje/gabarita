@@ -1,0 +1,26 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1E3A40"/>
+      <stop offset="1" stop-color="#152B30"/>
+    </linearGradient>
+    <linearGradient id="markGradOg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5FF0D8"/>
+      <stop offset="1" stop-color="#1C9C8E"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bgGrad)"/>
+  <g opacity="0.12">
+    <circle cx="1060" cy="90" r="180" fill="#5FF0D8"/>
+    <circle cx="120" cy="560" r="170" fill="#5FF0D8"/>
+  </g>
+
+  <g transform="translate(140 155)">
+    <rect x="0" y="0" width="250" height="320" rx="56" fill="url(#markGradOg)"/>
+    <path d="M69 132C69 93.8924 99.8924 63 138 63C176.108 63 207 93.8924 207 132V188C207 236.601 167.601 276 119 276H91" stroke="#F7FFFD" stroke-width="24" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M105 194L130 219L174 171" stroke="#F7FFFD" stroke-width="20" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <text x="435" y="330" fill="#F2FBF9" font-size="122" font-weight="700" font-family="Segoe UI, Tahoma, Geneva, Verdana, sans-serif">gabarita</text>
+  <text x="438" y="390" fill="#A3C8C2" font-size="34" font-weight="600" font-family="Segoe UI, Tahoma, Geneva, Verdana, sans-serif">Planeje. Estude. Gabarite.</text>
+</svg>
