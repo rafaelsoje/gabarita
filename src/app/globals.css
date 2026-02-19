@@ -585,6 +585,27 @@ a {
   gap: 4px;
 }
 
+.topNotificationsHeaderActions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 2px 4px 4px;
+}
+
+.topNotificationsMarkAllBtn {
+  border: 1px solid #b9d7d2;
+  background: #f6fbfa;
+  color: #2d7f73;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 8px;
+  cursor: pointer;
+}
+
+.topNotificationsMarkAllBtn:hover {
+  background: #ebf8f5;
+}
+
 .topNotificationsItem {
   display: grid;
   gap: 2px;
@@ -607,6 +628,15 @@ a {
   color: #697781;
   font-size: 12px;
   line-height: 1.25;
+}
+
+.topNotificationsItem.seen strong {
+  font-weight: 500;
+  color: #5f6c75;
+}
+
+.topNotificationsItem.seen span {
+  color: #7a8790;
 }
 
 .topNotificationsEmpty {
@@ -1994,6 +2024,180 @@ a {
   line-height: 1.05;
 }
 
+.concursosMetricsGrid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.concursosMetricCard {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 110px;
+  gap: 8px;
+  position: relative;
+}
+
+.concursosMetricCard .concursosMetricValue {
+  color: #30414c;
+  font-size: 24px;
+  line-height: 1.1;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+
+.concursosMetricCard .concursosMetricValue.isDate {
+  font-size: 24px;
+  letter-spacing: 0;
+}
+
+.concursosMetricCard .concursosMetricValue.isSource {
+  font-size: 24px;
+  letter-spacing: 0;
+  overflow-wrap: anywhere;
+}
+
+.concursosDataOriginBadge {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  letter-spacing: 0.03em;
+  font-weight: 600;
+  border: 1px solid transparent;
+}
+
+.concursosDataOriginBadge.cache {
+  color: #3f5d63;
+  border-color: #c8d9dc;
+  background: #f4fafb;
+}
+
+.concursosDataOriginBadge.api {
+  color: #1e6e63;
+  border-color: #9dded3;
+  background: #e9fbf7;
+}
+
+.concursosDataOriginBadge.topRight {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+}
+
+.concursosListItemCard {
+  position: relative;
+  padding: 12px 14px 10px;
+  padding-right: 140px;
+}
+
+.concursosListItemCard .questionCardHeader {
+  margin-bottom: 8px;
+  gap: 6px;
+}
+
+.concursosListItemCard .questionCardHeader strong {
+  font-size: 19px;
+  line-height: 1.2;
+}
+
+.concursosTitleRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.concursosListItemCard .libraryListMeta {
+  margin: 0;
+  line-height: 1.35;
+}
+
+.concursosMetaRowCompact {
+  margin-top: 6px;
+}
+
+.concursosDeadlineCell {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.concursosDeadlineTag {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.2;
+  border: 1px solid transparent;
+}
+
+.concursosDeadlineTag.isLong {
+  color: #1f7a52;
+  background: #e6f7ef;
+  border-color: #b8e6cf;
+}
+
+.concursosDeadlineTag.isNear {
+  color: #8a5a10;
+  background: #fff4df;
+  border-color: #f2d39b;
+}
+
+.concursosDeadlineTag.isToday {
+  color: #9e2d2f;
+  background: #ffe7e8;
+  border-color: #f2b7bb;
+}
+
+.concursosDeadlineAlert {
+  display: inline-flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  color: #9e2d2f;
+  background: #ffe7e8;
+  border: 1px solid #f2b7bb;
+}
+
+.concursosCardActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 0;
+  position: absolute;
+  top: 12px;
+  right: 14px;
+}
+
+.concursosCardActions .secondaryBtn {
+  min-height: 34px;
+  padding: 6px 12px;
+}
+
+.concursosList {
+  gap: 14px;
+}
+
+@media (max-width: 720px) {
+  .concursosListItemCard {
+    padding-right: 14px;
+  }
+
+  .concursosCardActions {
+    position: static;
+    margin-top: 6px;
+  }
+}
+
 .provasFormGrid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -2840,6 +3044,24 @@ a {
   margin-top: 6px;
 }
 
+.preferencesRegionChooser {
+  display: grid;
+  gap: 8px;
+}
+
+.preferencesRegionGrid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.preferencesRegionItem {
+  margin-top: 0;
+  border: 1px solid #d2e5e1;
+  border-radius: 10px;
+  padding: 6px 8px;
+}
+
 .profileChannelStatusRow {
   display: flex;
   flex-wrap: wrap;
@@ -2874,6 +3096,16 @@ a {
 @media (max-width: 1040px) {
   .preferencesPanels {
     grid-template-columns: 1fr;
+  }
+
+  .preferencesRegionGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .preferencesRegionGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 }
 
@@ -3148,13 +3380,51 @@ a {
   grid-template-columns: repeat(6, minmax(120px, 1fr)) auto;
 }
 
+.concursosFiltersForm {
+  grid-template-columns: repeat(3, minmax(170px, 1fr));
+}
+
+.concursosFiltersForm .historyActions {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  justify-self: end;
+}
+
+.concursosInlineToggle {
+  align-self: stretch;
+}
+
+.concursosCheckboxLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1.5px solid #9cded4;
+  border-radius: 12px;
+  color: #495158;
+  background: #fff;
+  font-size: 14px;
+}
+
+.concursosCheckboxLabel input {
+  width: 16px;
+  height: 16px;
+  accent-color: #2cb89f;
+}
+
+.concursosCheckboxLabel:has(input:disabled) {
+  opacity: 0.65;
+}
+
 .historyFilterField {
   display: grid;
   gap: 6px;
   min-width: 0;
 }
 
-.historyFilterField span {
+.historyFilterField > span {
   font-size: 12px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -3162,7 +3432,7 @@ a {
 }
 
 .historyFilterField select,
-.historyFilterField input {
+.historyFilterField input:not([type="checkbox"]) {
   height: 40px;
   border: 1.5px solid #9cded4;
   border-radius: 12px;
@@ -3175,7 +3445,7 @@ a {
   max-width: 100%;
 }
 
-.historyFilterField input:disabled {
+.historyFilterField input:not([type="checkbox"]):disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }
@@ -3207,9 +3477,18 @@ a {
     grid-template-columns: repeat(3, minmax(130px, 1fr));
   }
 
+  .concursosFiltersForm {
+    grid-template-columns: repeat(2, minmax(130px, 1fr));
+  }
+
   .historyFilterActions {
     grid-column: 1 / -1;
     justify-content: flex-start;
+  }
+
+  .concursosFiltersForm .historyActions {
+    grid-column: 1 / -1;
+    justify-self: start;
   }
 }
 
@@ -6789,6 +7068,30 @@ a {
 
 .libraryActionBtn:hover {
   background: #e6f6f2;
+}
+
+.planFilesTable {
+  min-width: 0;
+}
+
+.planFilesTable td,
+.planFilesTable th {
+  vertical-align: middle;
+}
+
+.planFilesNameCell {
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+.planFilesActionsCell {
+  min-width: 250px;
+  white-space: nowrap;
+}
+
+.planFilesActionsCell .libraryRowActions {
+  flex-wrap: nowrap;
+  justify-content: flex-end;
 }
 
 .libraryListMeta {

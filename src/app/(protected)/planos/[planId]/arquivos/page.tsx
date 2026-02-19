@@ -171,31 +171,6 @@ export default async function PlanFilesPage({ params }: PageProps) {
           </div>
         )}
       </section>
-      <style jsx>{`
-        .planFilesTable {
-          min-width: 0;
-        }
-
-        .planFilesTable td,
-        .planFilesTable th {
-          vertical-align: middle;
-        }
-
-        .planFilesNameCell {
-          overflow-wrap: anywhere;
-          word-break: break-word;
-        }
-
-        .planFilesActionsCell {
-          min-width: 250px;
-          white-space: nowrap;
-        }
-
-        .planFilesActionsCell :global(.libraryRowActions) {
-          flex-wrap: nowrap;
-          justify-content: flex-end;
-        }
-      `}</style>
     </main>
   );
 }
