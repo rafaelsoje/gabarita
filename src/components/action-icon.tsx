@@ -1,5 +1,5 @@
 type ActionIconProps = {
-  name: "edit" | "remove" | "view" | "archive";
+  name: "edit" | "remove" | "view" | "archive" | "file";
   className?: string;
   size?: "sm" | "md" | "lg" | number;
 };
@@ -46,6 +46,17 @@ export function ActionIcon({ name, className, size }: ActionIconProps) {
       <svg {...common}>
         <path d="M12 20h9" />
         <path d="m16.5 3.5 4 4L8 20l-5 1 1-5 12.5-12.5Z" />
+      </svg>
+    );
+  }
+
+  if (name === "file") {
+    return (
+      <svg {...common}>
+        <path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z" />
+        <path d="M14 3v5h5" />
+        <path d="M9 13h6" />
+        <path d="M9 17h6" />
       </svg>
     );
   }

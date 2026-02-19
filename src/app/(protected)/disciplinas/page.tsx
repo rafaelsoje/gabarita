@@ -95,7 +95,8 @@ export default async function SubjectsPage({ searchParams }: SubjectsPageProps) 
       examDate: true,
       _count: {
         select: {
-          subjects: true
+          subjects: true,
+          referenceFiles: true
         }
       }
     }
@@ -529,6 +530,9 @@ export default async function SubjectsPage({ searchParams }: SubjectsPageProps) 
               {plans.length > 1 ? (
                 <SubjectPlanSelector options={planOptions} currentPlanId={selectedPlan.id} />
               ) : null}
+              <Link className="ghostButton" href={`/planos/${selectedPlan.id}/arquivos`}>
+                Arquivos do plano
+              </Link>
               <Link className="ghostButton" href={`/disciplinas?planId=${selectedPlan.id}&newSubject=1`}>
                 Nova disciplina
               </Link>
@@ -561,6 +565,14 @@ export default async function SubjectsPage({ searchParams }: SubjectsPageProps) 
                   title="Arquivar plano"
                 />
               </form>
+              <Link
+                className="planSummaryToolBtn"
+                href={`/planos/${selectedPlan.id}/arquivos`}
+                aria-label={`Arquivos do plano (${selectedPlan._count.referenceFiles})`}
+                title={`Arquivos do plano (${selectedPlan._count.referenceFiles})`}
+              >
+                <ActionIcon name="file" />
+              </Link>
               <Link className="planSummaryToolBtn" href={`/?tab=planos&editPlan=${selectedPlan.id}`} aria-label="Editar plano" title="Editar plano">
                 <ActionIcon name="edit" />
               </Link>
