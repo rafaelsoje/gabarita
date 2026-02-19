@@ -136,7 +136,7 @@ export function QuestionPracticeForm({ questionId, options }: QuestionPracticeFo
           ))}
         </div>
 
-        <button className="secondaryBtn" type="submit" disabled={pending}>
+        <button className="secondaryBtn" type="submit" disabled={pending || !selectedOptionId}>
           {pending ? "Respondendo..." : "Responder"}
         </button>
       </form>

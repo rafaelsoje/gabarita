@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
   }
 
   const planId = request.nextUrl.searchParams.get("planId")?.trim() || "";
-  const { items, total } = await loadTodaySnapshot(userId, planId, false);
+  const { items, total } = await loadTodaySnapshot(userId, planId, true);
 
   return NextResponse.json({
     authenticated: true,
@@ -118,7 +118,7 @@ export async function POST(request: Request) {
   }
 
   const [snapshot, user] = await Promise.all([
-    loadTodaySnapshot(userId, "", false),
+    loadTodaySnapshot(userId, "", true),
     loadNotificationUser(userId)
   ]);
 
@@ -310,6 +310,9 @@ async function loadConcursoNotifications(
 
   const whereOpen = {
     status: "OPEN" as const,
+    source: {
+      startsWith: "PCI"
+    },
     AND: [
       regionFilter === "ALL" ? {} : regionFilter,
       { OR: [{ registrationEnd: null }, { registrationEnd: { gte: todayUtcStart } }] }
@@ -334,12 +337,10 @@ async function loadConcursoNotifications(
 
   const prevOpen = new Set(prefs.notifyConcursosNotifiedOpen);
   const prevLastDay = new Set(prefs.notifyConcursosNotifiedLastDay);
-  const newOpenCount = params.updateState
-    ? Array.from(activeKeys).filter((key) => !prevOpen.has(key)).length
-    : activeKeys.size;
-  const newLastDayCount = params.updateState
-    ? Array.from(activeLastDayKeys).filter((key) => !prevLastDay.has(key)).length
-    : activeLastDayKeys.size;
+  const newOpenKeys = Array.from(activeKeys).filter((key) => !prevOpen.has(key));
+  const newLastDayKeys = Array.from(activeLastDayKeys).filter((key) => !prevLastDay.has(key));
+  const newOpenCount = newOpenKeys.length;
+  const newLastDayCount = newLastDayKeys.length;
 
   if (params.updateState) {
     const nextOpen = Array.from(activeKeys).sort();

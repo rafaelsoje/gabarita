@@ -3,14 +3,13 @@ import { Prisma, QuestionDifficulty, QuestionSourceType } from "@prisma/client";
 import { redirect } from "next/navigation";
 import { getAuthenticatedUserId } from "@/lib/auth/current-user";
 import { prisma } from "@/lib/prisma";
-import { normalizeBancaName, parseBancaFromPlanNotes } from "@/lib/questions/plan-notes";
+import { normalizeBancaName } from "@/lib/questions/plan-notes";
 import { QuestionPracticeForm } from "@/components/question-practice-form";
 import { QuestionsGenerateModal } from "@/components/questions-generate-modal";
 import { QuestionsFiltersForm } from "@/components/questions-filters-form";
 
 type QuestionsPageProps = {
   searchParams: Promise<{
-    planId?: string;
     subjectId?: string;
     topicId?: string;
     banca?: string;
@@ -20,6 +19,25 @@ type QuestionsPageProps = {
     reason?: string;
   }>;
 };
+
+type FilterRef =
+  | { kind: "id"; value: string }
+  | { kind: "label"; value: string }
+  | null;
+
+function parseFilterRef(value: string): FilterRef {
+  const raw = value.trim();
+  if (!raw) return null;
+  if (raw.startsWith("id:")) {
+    const id = raw.slice(3).trim();
+    return id ? { kind: "id", value: id } : null;
+  }
+  if (raw.startsWith("label:")) {
+    const label = raw.slice(6).trim();
+    return label ? { kind: "label", value: label } : null;
+  }
+  return null;
+}
 
 function toInt(value: string | undefined, fallback: number, min: number, max: number) {
   const parsed = Number.parseInt(value ?? "", 10);
@@ -86,7 +104,6 @@ export default async function QuestionsPage({ searchParams }: QuestionsPageProps
   if (!userId) redirect("/entrar");
 
   const params = await searchParams;
-  const selectedPlanId = (params.planId ?? "").trim();
   const selectedSubjectId = (params.subjectId ?? "").trim();
   const selectedTopicId = (params.topicId ?? "").trim();
   const selectedBanca = normalizeBancaName((params.banca ?? "").trim());
@@ -97,38 +114,123 @@ export default async function QuestionsPage({ searchParams }: QuestionsPageProps
   const technicalReasonRaw = rawReason ? decodeURIComponentSafe(rawReason).slice(0, 260) : "";
   const technicalReason = technicalReasonRaw ? formatLlmReason(technicalReasonRaw) : "";
 
-  const plans = await prisma.plan.findMany({
-    where: { userId, isArchived: false },
-    select: { id: true, title: true, notes: true },
-    orderBy: { createdAt: "desc" }
-  });
+  const [userSubjects, subjectIdRows, subjectLabelRows] = await Promise.all([
+    prisma.subject.findMany({
+      where: {
+        plan: { userId, isArchived: false }
+      },
+      select: { id: true, name: true, planId: true },
+      orderBy: { name: "asc" }
+    }),
+    prisma.question.findMany({
+      where: { subjectId: { not: null } },
+      distinct: ["subjectId"],
+      select: { subjectId: true }
+    }),
+    prisma.question.findMany({
+      where: {
+        subjectLabel: { not: null }
+      },
+      distinct: ["subjectLabel"],
+      select: { subjectLabel: true }
+    })
+  ]);
 
-  const planIds = new Set(plans.map((plan) => plan.id));
-  const safePlanId = planIds.has(selectedPlanId) ? selectedPlanId : "";
+  const questionSubjectIds = subjectIdRows.map((row) => row.subjectId).filter((value): value is string => Boolean(value));
+  const questionSubjectsById =
+    questionSubjectIds.length > 0
+      ? await prisma.subject.findMany({
+          where: { id: { in: questionSubjectIds } },
+          select: { id: true, name: true },
+          orderBy: { name: "asc" }
+        })
+      : [];
 
-  const subjects = await prisma.subject.findMany({
-    where: {
-      plan: { userId, isArchived: false },
-      ...(safePlanId ? { planId: safePlanId } : {})
-    },
-    select: { id: true, name: true, planId: true },
-    orderBy: { name: "asc" }
-  });
+  const subjectLabelOptions = subjectLabelRows
+    .map((row) => String(row.subjectLabel ?? "").trim())
+    .filter(Boolean);
 
-  const subjectIds = new Set(subjects.map((subject) => subject.id));
+  const subjectOptionMap = new Map<string, { id: string; name: string }>();
+  for (const subject of questionSubjectsById) {
+    subjectOptionMap.set(`id:${subject.id}`, { id: `id:${subject.id}`, name: subject.name });
+  }
+  for (const label of subjectLabelOptions) {
+    const key = `label:${label}`;
+    if (!subjectOptionMap.has(key)) {
+      subjectOptionMap.set(key, { id: key, name: label });
+    }
+  }
+  const filterSubjects = Array.from(subjectOptionMap.values()).sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
+
+  const [userTopics, topicIdRows, topicLabelRows] = await Promise.all([
+    prisma.topic.findMany({
+      where: {
+        subject: { plan: { userId, isArchived: false } }
+      },
+      select: { id: true, title: true, subjectId: true },
+      orderBy: { title: "asc" }
+    }),
+    prisma.question.findMany({
+      where: { topicId: { not: null } },
+      distinct: ["topicId"],
+      select: { topicId: true }
+    }),
+    prisma.question.findMany({
+      where: {
+        topicLabel: { not: null }
+      },
+      distinct: ["topicLabel"],
+      select: { topicLabel: true }
+    })
+  ]);
+
+  const questionTopicIds = topicIdRows.map((row) => row.topicId).filter((value): value is string => Boolean(value));
+  const questionTopicsById =
+    questionTopicIds.length > 0
+      ? await prisma.topic.findMany({
+          where: { id: { in: questionTopicIds } },
+          select: { id: true, title: true, subjectId: true },
+          orderBy: { title: "asc" }
+        })
+      : [];
+
+  const topicLabelOptions = topicLabelRows
+    .map((row) => String(row.topicLabel ?? "").trim())
+    .filter(Boolean);
+
+  const topicOptionMap = new Map<string, { id: string; title: string; subjectId: string }>();
+  for (const topic of questionTopicsById) {
+    topicOptionMap.set(`id:${topic.id}`, { id: `id:${topic.id}`, title: topic.title, subjectId: topic.subjectId });
+  }
+  for (const label of topicLabelOptions) {
+    const key = `label:${label}`;
+    if (!topicOptionMap.has(key)) {
+      topicOptionMap.set(key, { id: key, title: label, subjectId: "" });
+    }
+  }
+  const filterTopics = Array.from(topicOptionMap.values()).sort((a, b) => a.title.localeCompare(b.title, "pt-BR"));
+
+  const subjectIds = new Set(filterSubjects.map((subject) => subject.id));
   const safeSubjectId = subjectIds.has(selectedSubjectId) ? selectedSubjectId : "";
-
-  const topics = await prisma.topic.findMany({
-    where: {
-      subject: { plan: { userId, isArchived: false } },
-      ...(safeSubjectId ? { subjectId: safeSubjectId } : {})
-    },
-    select: { id: true, title: true, subjectId: true },
-    orderBy: { title: "asc" }
-  });
-
-  const topicIds = new Set(topics.map((topic) => topic.id));
+  const topicIds = new Set(filterTopics.map((topic) => topic.id));
   const safeTopicId = topicIds.has(selectedTopicId) ? selectedTopicId : "";
+
+  const subjectRef = parseFilterRef(safeSubjectId);
+  const topicRef = parseFilterRef(safeTopicId);
+  const modalDefaultSubjectId = subjectRef?.kind === "id" && userSubjects.some((subject) => subject.id === subjectRef.value) ? subjectRef.value : "";
+  const modalDefaultTopicId = topicRef?.kind === "id" && userTopics.some((topic) => topic.id === topicRef.value) ? topicRef.value : "";
+
+  const filters: Prisma.QuestionWhereInput[] = [];
+  if (subjectRef?.kind === "id") {
+    filters.push({ subjectId: subjectRef.value });
+  } else if (subjectRef?.kind === "label") {
+    filters.push({ subjectLabel: { equals: subjectRef.value, mode: "insensitive" } });
+  }
+  if (topicRef?.kind === "id") {
+    filters.push({ topicId: topicRef.value });
+  } else if (topicRef?.kind === "label") {
+    filters.push({ topicLabel: { equals: topicRef.value, mode: "insensitive" } });
+  }
 
   const keywordTerms = selectedQuery
     .normalize("NFD")
@@ -139,20 +241,6 @@ export default async function QuestionsPage({ searchParams }: QuestionsPageProps
     .filter((term) => term.length >= 3)
     .slice(0, 8);
 
-  const selectedSubjectName = subjects.find((subject) => subject.id === safeSubjectId)?.name ?? "";
-  const selectedTopicTitle = topics.find((topic) => topic.id === safeTopicId)?.title ?? "";
-  const filters: Prisma.QuestionWhereInput[] = [];
-  if (safePlanId) filters.push({ planId: safePlanId });
-  if (safeSubjectId) {
-    filters.push({
-      OR: [{ subjectId: safeSubjectId }, ...(selectedSubjectName ? [{ subjectLabel: selectedSubjectName }] : [])]
-    });
-  }
-  if (safeTopicId) {
-    filters.push({
-      OR: [{ topicId: safeTopicId }, ...(selectedTopicTitle ? [{ topicLabel: selectedTopicTitle }] : [])]
-    });
-  }
   if (selectedBanca) filters.push({ banca: selectedBanca });
   if (selectedTheme) filters.push({ theme: { contains: selectedTheme, mode: "insensitive" } });
   if (selectedQuery) {
@@ -168,7 +256,6 @@ export default async function QuestionsPage({ searchParams }: QuestionsPageProps
   }
 
   const questionWhere: Prisma.QuestionWhereInput = {
-    userId,
     ...(filters.length > 0 ? { AND: filters } : {})
   };
 
@@ -189,22 +276,25 @@ export default async function QuestionsPage({ searchParams }: QuestionsPageProps
     take: PAGE_SIZE
   });
 
-  const boardProfiles = await prisma.examBoardProfile
+  const boardRows = await prisma.question
     .findMany({
-      where: { userId },
-      select: { name: true },
-      orderBy: { name: "asc" }
+      where: {
+        banca: {
+          not: null
+        }
+      },
+      distinct: ["banca"],
+      select: { banca: true },
+      orderBy: { banca: "asc" }
     })
     .catch(() => []);
   const boardNames = Array.from(
     new Set(
-      [
-        ...boardProfiles.map((item) => normalizeBancaName(item.name)),
-        ...plans.map((plan) => parseBancaFromPlanNotes(plan.notes))
-      ].filter(Boolean)
+      boardRows
+        .map((item) => normalizeBancaName(item.banca ?? ""))
+        .filter(Boolean)
     )
   );
-  const planBancaById = Object.fromEntries(plans.map((plan) => [plan.id, parseBancaFromPlanNotes(plan.notes)]));
   return (
     <main className="dashboard">
       <section className="dashboardCard dashboardHeader">
@@ -219,26 +309,21 @@ export default async function QuestionsPage({ searchParams }: QuestionsPageProps
         </div>
         <div>
           <QuestionsGenerateModal
-            plans={plans.map((plan) => ({ id: plan.id, title: plan.title }))}
-            subjects={subjects.map((subject) => ({ id: subject.id, name: subject.name, planId: subject.planId }))}
-            topics={topics.map((topic) => ({ id: topic.id, title: topic.title, subjectId: topic.subjectId }))}
-            defaultPlanId={safePlanId}
-            defaultSubjectId={safeSubjectId}
-            defaultTopicId={safeTopicId}
+            subjects={userSubjects.map((subject) => ({ id: subject.id, name: subject.name }))}
+            topics={userTopics.map((topic) => ({ id: topic.id, title: topic.title, subjectId: topic.subjectId }))}
+            defaultSubjectId={modalDefaultSubjectId}
+            defaultTopicId={modalDefaultTopicId}
             defaultBanca={selectedBanca}
             boardNames={boardNames}
-            planBancaById={planBancaById}
           />
         </div>
       </section>
 
       <section className="dashboardCard questionsFiltersCard">
         <QuestionsFiltersForm
-          plans={plans.map((plan) => ({ id: plan.id, title: plan.title }))}
-          subjects={subjects.map((subject) => ({ id: subject.id, name: subject.name, planId: subject.planId }))}
-          topics={topics.map((topic) => ({ id: topic.id, title: topic.title, subjectId: topic.subjectId }))}
+          subjects={filterSubjects.map((subject) => ({ id: subject.id, name: subject.name }))}
+          topics={filterTopics.map((topic) => ({ id: topic.id, title: topic.title, subjectId: topic.subjectId }))}
           boardNames={boardNames}
-          selectedPlanId={safePlanId}
           selectedSubjectId={safeSubjectId}
           selectedTopicId={safeTopicId}
           selectedBanca={selectedBanca}
@@ -294,7 +379,7 @@ export default async function QuestionsPage({ searchParams }: QuestionsPageProps
                     <span>{sourceLabel(question.sourceType, question.llmModel ?? null)}</span>
                     <span>{question.banca ?? "Sem banca"}</span>
                     <span>{question.subject?.name ?? question.subjectLabel ?? "Sem disciplina"}</span>
-                    <span>{question.topic?.title ?? question.topicLabel ?? "Sem tópico"}</span>
+                    <span>{question.topic?.title ?? question.topicLabel ?? "Sem assunto"}</span>
                     <span>{question.theme ?? "Sem tema"}</span>
                   </div>
                 </header>
@@ -318,7 +403,6 @@ export default async function QuestionsPage({ searchParams }: QuestionsPageProps
               className={`libraryPaginationBtn ${safePage <= 1 ? "disabled" : ""}`}
               href={buildQuestionsUrl({
                 page: safePage - 1,
-                planId: safePlanId,
                 subjectId: safeSubjectId,
                 topicId: safeTopicId,
                 banca: selectedBanca,
@@ -335,7 +419,6 @@ export default async function QuestionsPage({ searchParams }: QuestionsPageProps
               className={`libraryPaginationBtn ${safePage >= totalPages ? "disabled" : ""}`}
               href={buildQuestionsUrl({
                 page: safePage + 1,
-                planId: safePlanId,
                 subjectId: safeSubjectId,
                 topicId: safeTopicId,
                 banca: selectedBanca,
@@ -354,7 +437,6 @@ export default async function QuestionsPage({ searchParams }: QuestionsPageProps
 
 function buildQuestionsUrl(params: {
   page: number;
-  planId?: string;
   subjectId?: string;
   topicId?: string;
   banca?: string;
@@ -363,7 +445,6 @@ function buildQuestionsUrl(params: {
 }) {
   const query = new URLSearchParams();
   if (params.page > 1) query.set("page", String(params.page));
-  if (params.planId) query.set("planId", params.planId);
   if (params.subjectId) query.set("subjectId", params.subjectId);
   if (params.topicId) query.set("topicId", params.topicId);
   if (params.banca) query.set("banca", params.banca);

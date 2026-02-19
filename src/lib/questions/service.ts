@@ -5,7 +5,6 @@ import { normalizeBancaName, parseBancaFromPlanNotes } from "@/lib/questions/pla
 
 type GenerateAndStoreParams = {
   userId: string;
-  planId: string;
   subjectId: string;
   topicId?: string;
   topicIds?: string[];
@@ -15,19 +14,23 @@ type GenerateAndStoreParams = {
 };
 
 export async function generateAndStoreQuestions(params: GenerateAndStoreParams) {
-  const [plan, user] = await Promise.all([
-    prisma.plan.findFirst({
-      where: { id: params.planId, userId: params.userId, isArchived: false },
-      select: { id: true, notes: true }
+  const [subject, user] = await Promise.all([
+    prisma.subject.findFirst({
+      where: {
+        id: params.subjectId,
+        plan: { userId: params.userId, isArchived: false }
+      },
+      select: {
+        id: true,
+        name: true,
+        planId: true,
+        plan: {
+          select: { notes: true }
+        }
+      }
     }),
     loadUserLlmPreferences(params.userId)
   ]);
-  if (!plan) throw new Error("Plano inválido.");
-
-  const subject = await prisma.subject.findFirst({
-    where: { id: params.subjectId, planId: plan.id },
-    select: { id: true, name: true }
-  });
   if (!subject) throw new Error("Disciplina inválida para o plano informado.");
 
   let topic: { id: string; title: string } | null = null;
@@ -57,7 +60,7 @@ export async function generateAndStoreQuestions(params: GenerateAndStoreParams) 
     }
   }
 
-  const bancaFromPlan = parseBancaFromPlanNotes(plan.notes);
+  const bancaFromPlan = parseBancaFromPlanNotes(subject.plan.notes);
   const bancaOverride = normalizeBancaName(params.bancaOverride);
   const banca = bancaOverride || bancaFromPlan;
   const boardProfile = await loadBoardProfile(params.userId, banca);
@@ -108,7 +111,7 @@ export async function generateAndStoreQuestions(params: GenerateAndStoreParams) 
 
       const baseData = {
         userId: params.userId,
-        planId: plan.id,
+        planId: subject.planId,
         subjectId: subject.id,
         topicId: resolvedTopic?.id,
         subjectLabel,
@@ -416,7 +419,7 @@ export async function answerPracticeQuestion(params: PracticeAnswerParams) {
 
   try {
     question = await prisma.question.findFirst({
-      where: { id: params.questionId, userId: params.userId },
+      where: { id: params.questionId },
       select: {
         id: true,
         whyCorrect: true,
@@ -435,7 +438,7 @@ export async function answerPracticeQuestion(params: PracticeAnswerParams) {
     if (!hasMissingQuestionWhyColumns(error)) throw error;
     supportsWhyColumns = false;
     question = await prisma.question.findFirst({
-      where: { id: params.questionId, userId: params.userId },
+      where: { id: params.questionId },
       select: {
         id: true,
         options: {

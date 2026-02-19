@@ -4,20 +4,16 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toastError, toastSuccess } from "@/components/app-toast";
 
-type PlanItem = { id: string; title: string };
-type SubjectItem = { id: string; name: string; planId: string };
+type SubjectItem = { id: string; name: string };
 type TopicItem = { id: string; title: string; subjectId: string };
 
 type QuestionsGenerateModalProps = {
-  plans: PlanItem[];
   subjects: SubjectItem[];
   topics: TopicItem[];
-  defaultPlanId: string;
   defaultSubjectId: string;
   defaultTopicId: string;
   defaultBanca: string;
   boardNames: string[];
-  planBancaById: Record<string, string>;
 };
 
 function truncateOptionLabel(label: string, maxLength = 56) {
@@ -30,75 +26,49 @@ export function QuestionsGenerateModal(props: QuestionsGenerateModalProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [planId, setPlanId] = useState(props.defaultPlanId || props.plans[0]?.id || "");
   const [subjectId, setSubjectId] = useState(props.defaultSubjectId || "");
   const [topicId, setTopicId] = useState(props.defaultTopicId || "");
   const [amount, setAmount] = useState("5");
   const [difficulty, setDifficulty] = useState("MEDIUM");
-  const [banca, setBanca] = useState(props.defaultBanca || props.planBancaById[props.defaultPlanId] || "");
+  const [banca, setBanca] = useState(props.defaultBanca || "");
 
-  const availableSubjects = useMemo(
-    () => (planId ? props.subjects.filter((item) => item.planId === planId) : []),
-    [props.subjects, planId]
-  );
-  const availableTopics = useMemo(
-    () => (subjectId ? props.topics.filter((item) => item.subjectId === subjectId) : []),
-    [props.topics, subjectId]
-  );
-  const selectedTopic = useMemo(
-    () => availableTopics.find((item) => item.id === topicId) ?? null,
-    [availableTopics, topicId]
+  const availableSubjects = useMemo(() => props.subjects, [props.subjects]);
+  const availableTopics = useMemo(() => props.topics, [props.topics]);
+  const selectedTopic = useMemo(() => props.topics.find((item) => item.id === topicId) ?? null, [props.topics, topicId]);
+  const resolvedSubjectId = subjectId || selectedTopic?.subjectId || "";
+  const resolvedSubjectTopics = useMemo(
+    () => (resolvedSubjectId ? props.topics.filter((item) => item.subjectId === resolvedSubjectId) : []),
+    [props.topics, resolvedSubjectId]
   );
   const topicScopeHint = useMemo(() => {
-    if (!subjectId) return "Selecione uma disciplina para definir o escopo da geração.";
-    if (topicId && selectedTopic) return `Escopo: somente o tópico "${selectedTopic.title}".`;
-    if (availableTopics.length === 0) {
-      return "Esta disciplina não possui tópicos cadastrados. A geração usará apenas o contexto da disciplina.";
+    if (!resolvedSubjectId) return "Selecione uma disciplina ou um assunto para definir o escopo da geração.";
+    if (topicId && selectedTopic) return `Escopo: somente o assunto "${selectedTopic.title}".`;
+    if (resolvedSubjectTopics.length === 0) {
+      return "Esta disciplina não possui assuntos cadastrados. A geração usará apenas o contexto da disciplina.";
     }
-    return `Escopo: todos os ${availableTopics.length} tópico(s) da disciplina.`;
-  }, [subjectId, topicId, selectedTopic, availableTopics.length]);
-
-  function handlePlanChange(nextPlanId: string) {
-    setPlanId(nextPlanId);
-    setBanca(props.planBancaById[nextPlanId] ?? "");
-
-    if (!nextPlanId) {
-      setSubjectId("");
-      setTopicId("");
-      return;
-    }
-
-    const subjectStillValid = props.subjects.some((item) => item.id === subjectId && item.planId === nextPlanId);
-    if (!subjectStillValid) {
-      setSubjectId("");
-      setTopicId("");
-      return;
-    }
-
-    const topicStillValid = props.topics.some((item) => item.id === topicId && item.subjectId === subjectId);
-    if (!topicStillValid) setTopicId("");
-  }
+    return `Escopo: todos os ${resolvedSubjectTopics.length} assunto(s) da disciplina.`;
+  }, [resolvedSubjectId, topicId, selectedTopic, resolvedSubjectTopics.length]);
 
   function handleSubjectChange(nextSubjectId: string) {
     setSubjectId(nextSubjectId);
-    if (!nextSubjectId) {
-      setTopicId("");
-      return;
-    }
+  }
 
-    const topicStillValid = props.topics.some((item) => item.id === topicId && item.subjectId === nextSubjectId);
-    if (!topicStillValid) setTopicId("");
+  function handleTopicChange(nextTopicId: string) {
+    setTopicId(nextTopicId);
+    if (!nextTopicId) return;
+    const topic = props.topics.find((item) => item.id === nextTopicId);
+    if (!topic) return;
+    setSubjectId(topic.subjectId);
   }
 
   useEffect(() => {
     if (!open) return;
-    const fromPlan = props.planBancaById[planId] ?? "";
-    setBanca(fromPlan || props.defaultBanca || "");
-  }, [open, planId, props.planBancaById, props.defaultBanca]);
+    setBanca(props.defaultBanca || "");
+  }, [open, props.defaultBanca]);
 
   async function submitGeneration() {
-    if (!planId || !subjectId) {
-      toastError("Questões", "Selecione plano e disciplina.");
+    if (!resolvedSubjectId) {
+      toastError("Questões", "Selecione uma disciplina ou um assunto.");
       return;
     }
 
@@ -108,10 +78,9 @@ export function QuestionsGenerateModal(props: QuestionsGenerateModalProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          planId,
-          subjectId,
+          subjectId: resolvedSubjectId,
           topicId: topicId || undefined,
-          topicIds: topicId ? undefined : availableTopics.map((topic) => topic.id),
+          topicIds: topicId ? undefined : resolvedSubjectTopics.map((topic) => topic.id),
           amount: Number.parseInt(amount, 10) || 5,
           difficulty,
           banca: banca.trim() || undefined
@@ -161,28 +130,9 @@ export function QuestionsGenerateModal(props: QuestionsGenerateModalProps) {
 
             <div className="questionsGeneratorForm">
               <label>
-                <span>Plano</span>
-                <select
-                  value={planId}
-                  onChange={(event) => handlePlanChange(event.target.value)}
-                >
-                  <option value="">Selecione</option>
-                  {props.plans.map((plan) => (
-                    <option key={plan.id} value={plan.id}>
-                      {plan.title}
-                    </option>
-                  ))}
-                </select>
-              </label>
-
-              <label>
                 <span>Disciplina</span>
-                <select
-                  value={subjectId}
-                  onChange={(event) => handleSubjectChange(event.target.value)}
-                  disabled={!planId}
-                >
-                  <option value="">{planId ? "Selecione" : "Selecione um plano"}</option>
+                <select value={subjectId} onChange={(event) => handleSubjectChange(event.target.value)}>
+                  <option value="">Selecione</option>
                   {availableSubjects.map((subject) => (
                     <option key={subject.id} value={subject.id}>
                       {subject.name}
@@ -192,9 +142,9 @@ export function QuestionsGenerateModal(props: QuestionsGenerateModalProps) {
               </label>
 
               <label>
-                <span>Tópico (opcional)</span>
-                <select value={topicId} onChange={(event) => setTopicId(event.target.value)} disabled={!subjectId}>
-                  <option value="">{subjectId ? "Todos os tópicos da disciplina" : "Selecione uma disciplina"}</option>
+                <span>Assunto (opcional)</span>
+                <select value={topicId} onChange={(event) => handleTopicChange(event.target.value)}>
+                  <option value="">Todos os assuntos</option>
                   {availableTopics.map((topic) => (
                     <option key={topic.id} value={topic.id}>
                       {truncateOptionLabel(topic.title)}

@@ -5,7 +5,6 @@ import { enforceMutationRateLimit } from "@/lib/api/mutation-rate-limit";
 import { generateAndStoreQuestions } from "@/lib/questions/service";
 
 type RequestBody = {
-  planId?: string;
   subjectId?: string;
   topicId?: string;
   topicIds?: string[];
@@ -26,7 +25,6 @@ export async function POST(request: Request) {
     if (limitResponse) return limitResponse;
 
     const body = (await request.json().catch(() => ({}))) as RequestBody;
-    const planId = (body.planId ?? "").trim();
     const subjectId = (body.subjectId ?? "").trim();
     const topicId = (body.topicId ?? "").trim();
     const topicIds = Array.isArray(body.topicIds)
@@ -39,13 +37,12 @@ export async function POST(request: Request) {
     const difficultyRaw = String(body.difficulty ?? "MEDIUM").toUpperCase();
     const difficulty: QuestionDifficulty = difficultyRaw === "EASY" || difficultyRaw === "HARD" ? difficultyRaw : "MEDIUM";
 
-    if (!planId || !subjectId) {
-      return NextResponse.json({ message: "Plano e disciplina são obrigatórios." }, { status: 400 });
+    if (!subjectId) {
+      return NextResponse.json({ message: "Disciplina é obrigatória." }, { status: 400 });
     }
 
     const result = await generateAndStoreQuestions({
       userId,
-      planId,
       subjectId,
       topicId: topicId || undefined,
       topicIds,
