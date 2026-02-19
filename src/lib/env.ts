@@ -2,7 +2,7 @@ export const env = {
   databaseUrl: process.env.DATABASE_URL ?? "",
   jwtAccessSecret: process.env.JWT_ACCESS_SECRET ?? "",
   jwtRefreshSecret: process.env.JWT_REFRESH_SECRET ?? "",
-  appUrl: process.env.APP_URL ?? "http://localhost:3000",
+  appUrl: process.env.APP_URL ?? "http://localhost:3001",
   openAiApiKey: process.env.OPENAI_API_KEY ?? "",
   openAiModel: process.env.OPENAI_MODEL ?? "gpt-5-mini",
   openAiResponsesUrl: process.env.OPENAI_RESPONSES_URL ?? "https://api.openai.com/v1/responses",
