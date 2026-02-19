@@ -2,14 +2,27 @@ import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 
 const accessSecret = process.env.JWT_ACCESS_SECRET ?? "";
+const refreshSecret = process.env.JWT_REFRESH_SECRET ?? "";
 const isProduction = process.env.NODE_ENV === "production";
 const appUrl = process.env.APP_URL ?? "";
 
-async function hasValidAccessToken(request: NextRequest) {
+async function hasAuthenticatedSession(request: NextRequest) {
+  if (await hasValidToken(request, "access_token", accessSecret, "access")) return true;
+  return hasValidToken(request, "refresh_token", refreshSecret, "refresh");
+}
+
+async function hasValidToken(
+  request: NextRequest,
+  cookieName: "access_token" | "refresh_token",
+  secret: string,
+  expectedType: "access" | "refresh"
+) {
   try {
-    const accessToken = request.cookies.get("access_token")?.value;
-    if (!accessToken || !accessSecret) return false;
-    await jwtVerify(accessToken, new TextEncoder().encode(accessSecret));
+    const token = request.cookies.get(cookieName)?.value;
+    if (!token || !secret) return false;
+    const verified = await jwtVerify(token, new TextEncoder().encode(secret));
+    if (verified.payload.type !== expectedType) return false;
+    if (typeof verified.payload.sub !== "string" || !verified.payload.sub) return false;
     return true;
   } catch {
     return false;
@@ -28,7 +41,7 @@ export async function middleware(request: NextRequest) {
     isApiRoute &&
     ["POST", "PUT", "PATCH", "DELETE"].includes(request.method);
   const isProtected = isProtectedRoute(pathname);
-  const authenticated = await hasValidAccessToken(request);
+  const authenticated = await hasAuthenticatedSession(request);
 
   if (pathname.startsWith("/uploads/topic-files/") || pathname.startsWith("/uploads/plan-files/")) {
     const response = new NextResponse("Not Found", { status: 404 });

@@ -47,6 +47,15 @@ function NavIcon({ name }: { name: string }) {
           <path d="M3 6h2M19 6h2M3 18h2M19 18h2" />
         </svg>
       );
+    case "concursos":
+      return (
+        <svg {...common}>
+          <path d="M4 20h16" />
+          <path d="M6 17V9l6-3 6 3v8" />
+          <path d="M12 6V3" />
+          <path d="M9 12h.01M12 12h.01M15 12h.01" />
+        </svg>
+      );
     case "edital":
       return (
         <svg {...common}>
@@ -151,6 +160,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     total: 0,
     items: []
   });
+  const [seenNotificationIds, setSeenNotificationIds] = useState<string[]>([]);
   const isNewPlanOpen = pathname === "/" && searchParams.get("newPlan") === "1";
   const isPlansTabOpen = pathname === "/" && searchParams.get("tab") === "planos";
   const isHomeActive = pathname === "/" && !isNewPlanOpen && !isPlansTabOpen;
@@ -159,6 +169,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     pathname === "/disciplinas" || pathname.startsWith("/topicos") || /^\/disciplinas\/[^/]+/.test(pathname);
   const isEditalActive = pathname.startsWith("/edital");
   const isBoardsActive = pathname.startsWith("/bancas");
+  const isConcursosActive = pathname.startsWith("/concursos");
   const isPlanningActive = pathname.startsWith("/planejamento");
   const isReviewsActive = pathname.startsWith("/revisoes");
   const isHistoryActive = pathname.startsWith("/historico");
@@ -171,6 +182,14 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const isArchiveActive = pathname.startsWith("/arquivo");
   const planIdFromPath = pathname.startsWith("/planos/") ? pathname.split("/")[2] ?? "" : "";
   const currentPlanId = searchParams.get("planId") || planIdFromPath || undefined;
+  const notificationDayKey = new Date().toISOString().slice(0, 10);
+  const notificationScopeKey = currentPlanId || "ALL";
+  const notificationSeenStorageKey = `gabarita:seen-notifications:${notificationDayKey}:${notificationScopeKey}`;
+  const seenNotificationsSet = new Set(seenNotificationIds);
+  const unreadNotificationsTotal = notifications.items.reduce(
+    (acc, item) => acc + (seenNotificationsSet.has(item.id) ? 0 : item.count),
+    0
+  );
 
   useEffect(() => {
     const toastCode = searchParams.get("toast");
@@ -204,7 +223,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       question_wrong: { kind: "error", title: "Questão", message: "Resposta incorreta." },
       mock_created: { kind: "success", title: "Simulado", message: "Simulado criado com sucesso." },
       mock_submitted: { kind: "success", title: "Simulado", message: "Tentativa registrada com sucesso." },
-      preferences_saved: { kind: "success", title: "Preferências", message: "Configurações de LLM salvas com sucesso." },
+      preferences_saved: { kind: "success", title: "Preferências", message: "Configurações salvas com sucesso." },
+      preferences_llm_saved: { kind: "success", title: "Conta LLM", message: "Configurações de LLM salvas com sucesso." },
+      preferences_notify_saved: { kind: "success", title: "Notificações", message: "Notificações externas salvas com sucesso." },
       preferences_test_ok: { kind: "success", title: "OpenAI", message: "Conexão validada com sucesso." },
       preferences_test_fail: { kind: "error", title: "OpenAI", message: "Falha ao validar conexão. Veja o detalhe técnico na página." },
       preferences_schema_pending: {
@@ -219,6 +240,8 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       },
       board_saved: { kind: "success", title: "Bancas", message: "Banca salva com sucesso." },
       board_deleted: { kind: "success", title: "Bancas", message: "Banca removida com sucesso." },
+      concursos_sync_ok: { kind: "success", title: "Concursos", message: "Lista atualizada com sucesso." },
+      concursos_sync_error: { kind: "error", title: "Concursos", message: "Falha ao atualizar. Verifique o feed configurado." },
       exam_result_saved: { kind: "success", title: "Provas", message: "Resultado de prova salvo com sucesso." },
       exam_result_deleted: { kind: "success", title: "Provas", message: "Resultado de prova removido com sucesso." },
       exam_result_file_invalid: { kind: "error", title: "Provas", message: "Envie apenas arquivo PDF para a prova." },
@@ -316,12 +339,42 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   }, [currentPlanId, pathname, searchParams]);
 
   useEffect(() => {
-    if (typeof window === "undefined" || typeof Notification === "undefined") return;
-    if (notifications.total <= 0) return;
+    if (typeof window === "undefined") return;
+    const raw = window.localStorage.getItem(notificationSeenStorageKey);
+    if (!raw) {
+      setSeenNotificationIds([]);
+      return;
+    }
+    try {
+      const parsed = JSON.parse(raw) as string[];
+      setSeenNotificationIds(Array.isArray(parsed) ? parsed : []);
+    } catch {
+      setSeenNotificationIds([]);
+    }
+  }, [notificationSeenStorageKey]);
 
-    const dayKey = new Date().toISOString().slice(0, 10);
-    const scopeKey = currentPlanId || "ALL";
-    const countsSignature = notifications.items.map((item) => `${item.id}:${item.count}`).join("|");
+  useEffect(() => {
+    const validIds = new Set(notifications.items.map((item) => item.id));
+    setSeenNotificationIds((prev) => {
+      const filtered = prev.filter((id) => validIds.has(id));
+      if (filtered.length === prev.length) return prev;
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(notificationSeenStorageKey, JSON.stringify(filtered));
+      }
+      return filtered;
+    });
+  }, [notifications.items, notificationSeenStorageKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof Notification === "undefined") return;
+    if (unreadNotificationsTotal <= 0) return;
+
+    const dayKey = notificationDayKey;
+    const scopeKey = notificationScopeKey;
+    const countsSignature = notifications.items
+      .filter((item) => !seenNotificationsSet.has(item.id))
+      .map((item) => `${item.id}:${item.count}`)
+      .join("|");
     const signature = `${dayKey}|${scopeKey}|${countsSignature}`;
     if (webNotifiedSignatureRef.current === signature) return;
     webNotifiedSignatureRef.current = signature;
@@ -329,7 +382,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     const deliveredKey = `gabarita:web-notify:${signature}`;
     if (window.localStorage.getItem(deliveredKey) === "1") return;
 
-    const relevantItems = notifications.items.filter((item) => item.count > 0);
+    const relevantItems = notifications.items.filter((item) => item.count > 0 && !seenNotificationsSet.has(item.id));
     if (relevantItems.length === 0) return;
 
     const primary = relevantItems[0];
@@ -365,7 +418,26 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
         showNotification();
       }
     });
-  }, [notifications, currentPlanId]);
+  }, [notifications, currentPlanId, unreadNotificationsTotal, seenNotificationIds, notificationDayKey, notificationScopeKey]);
+
+  function markNotificationAsSeen(itemId: string) {
+    setSeenNotificationIds((prev) => {
+      if (prev.includes(itemId)) return prev;
+      const next = [...prev, itemId];
+      if (typeof window !== "undefined") {
+        window.localStorage.setItem(notificationSeenStorageKey, JSON.stringify(next));
+      }
+      return next;
+    });
+  }
+
+  function markAllNotificationsAsSeen() {
+    const allIds = notifications.items.map((item) => item.id);
+    setSeenNotificationIds(allIds);
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(notificationSeenStorageKey, JSON.stringify(allIds));
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -481,6 +553,16 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
             <span>Início</span>
           </Link>
 
+          <Link
+            className={`appNavItem ${isConcursosActive ? "active" : ""}`}
+            href="/concursos"
+            onClick={closeMobileMenu}
+            data-label="Concursos"
+          >
+            <NavIcon name="concursos" />
+            <span>Concursos</span>
+          </Link>
+
           <Link className={`appNavItem ${isPlansActive ? "active" : ""}`} href="/?tab=planos" onClick={closeMobileMenu} data-label="Planos">
             <NavIcon name="plans" />
             <span>Planos</span>
@@ -587,19 +669,34 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
                 onClick={() => setNotificationsOpen((prev) => !prev)}
               >
                 <span aria-hidden="true">🔔</span>
-                {notifications.total > 0 ? <span className="topNotificationsCount">{notifications.total}</span> : null}
+                {unreadNotificationsTotal > 0 ? <span className="topNotificationsCount">{unreadNotificationsTotal}</span> : null}
               </button>
               {notificationsOpen ? (
                 <div className="topNotificationsDropdown">
                   {notifications.items.length === 0 ? (
                     <p className="topNotificationsEmpty">Sem notificações para hoje.</p>
                   ) : (
-                    notifications.items.map((item) => (
-                      <Link key={item.id} className="topNotificationsItem" href={item.href} onClick={() => setNotificationsOpen(false)}>
-                        <strong>{item.title}</strong>
-                        <span>{item.description}</span>
-                      </Link>
-                    ))
+                    <>
+                      <div className="topNotificationsHeaderActions">
+                        <button type="button" className="topNotificationsMarkAllBtn" onClick={markAllNotificationsAsSeen}>
+                          Marcar todas como lidas
+                        </button>
+                      </div>
+                      {notifications.items.map((item) => (
+                        <Link
+                          key={item.id}
+                          className={`topNotificationsItem ${seenNotificationsSet.has(item.id) ? "seen" : ""}`}
+                          href={item.href}
+                          onClick={() => {
+                            markNotificationAsSeen(item.id);
+                            setNotificationsOpen(false);
+                          }}
+                        >
+                          <strong>{item.title}</strong>
+                          <span>{item.description}</span>
+                        </Link>
+                      ))}
+                    </>
                   )}
                 </div>
               ) : null}

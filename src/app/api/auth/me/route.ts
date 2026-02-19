@@ -1,25 +1,18 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { verifyAccessToken } from "@/lib/auth/jwt";
+import { getAuthenticatedUserId } from "@/lib/auth/current-user";
 import { prisma } from "@/lib/prisma";
 import { computeCurrentStreakDays, localDayKey } from "@/lib/study/activity-stats";
 
 export async function GET() {
-  const cookieStore = await cookies();
-  const accessToken = cookieStore.get("access_token")?.value;
-  if (!accessToken) {
-    return NextResponse.json({ authenticated: false }, { status: 401 });
-  }
-
-  const payload = await verifyAccessToken(accessToken);
-  if (!payload?.sub) {
+  const userId = await getAuthenticatedUserId();
+  if (!userId) {
     return NextResponse.json({ authenticated: false }, { status: 401 });
   }
 
   try {
-    const streakDays = await getCurrentStudyStreakDays(payload.sub);
+    const streakDays = await getCurrentStudyStreakDays(userId);
     const user = await prisma.user.findUnique({
-      where: { id: payload.sub },
+      where: { id: userId },
       select: {
         id: true,
         name: true,
@@ -40,7 +33,7 @@ export async function GET() {
   } catch {
     // Fallback for environments where recent profile columns were not migrated yet.
     const basicUser = await prisma.user.findUnique({
-      where: { id: payload.sub },
+      where: { id: userId },
       select: {
         id: true,
         name: true,
@@ -52,7 +45,7 @@ export async function GET() {
       return NextResponse.json({ authenticated: false }, { status: 401 });
     }
 
-    const streakDays = await getCurrentStudyStreakDays(payload.sub);
+    const streakDays = await getCurrentStudyStreakDays(userId);
     return NextResponse.json({
       authenticated: true,
       streakDays,

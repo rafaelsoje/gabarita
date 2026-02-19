@@ -2,6 +2,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { PreferencesNotificationTestButtons } from "@/components/preferences-notification-test-buttons";
 import { PreferencesOpenAiTestButton } from "@/components/preferences-openai-test-button";
+import { PreferencesConcursosForm } from "@/components/preferences-concursos-form";
 import { getAuthenticatedUserId } from "@/lib/auth/current-user";
 import { env } from "@/lib/env";
 import { prisma } from "@/lib/prisma";
@@ -16,6 +17,36 @@ const LLM_PROVIDER_OPTIONS = [
   { value: "AUTO", label: "Auto (OpenAI -> Ollama)" },
   { value: "OPENAI", label: "Forçar OpenAI" },
   { value: "OLLAMA", label: "Forçar Ollama" }
+] as const;
+const NOTIFY_CONCURSOS_REGIONS = [
+  "NACIONAL",
+  "AC",
+  "AL",
+  "AP",
+  "AM",
+  "BA",
+  "CE",
+  "DF",
+  "ES",
+  "GO",
+  "MA",
+  "MT",
+  "MS",
+  "MG",
+  "PA",
+  "PB",
+  "PR",
+  "PE",
+  "PI",
+  "RJ",
+  "RN",
+  "RS",
+  "RO",
+  "RR",
+  "SC",
+  "SP",
+  "SE",
+  "TO"
 ] as const;
 
 type PreferencesPageProps = {
@@ -86,7 +117,7 @@ export default async function PreferencesPage({ searchParams }: PreferencesPageP
 
     revalidatePath("/preferencias");
     revalidatePath("/questoes");
-    redirect("/preferencias?toast=preferences_saved");
+    redirect(`/preferencias?toast=preferences_llm_saved&qfb=${Date.now()}`);
   }
 
   async function saveNotificationPreferences(formData: FormData) {
@@ -132,7 +163,7 @@ export default async function PreferencesPage({ searchParams }: PreferencesPageP
     }
 
     revalidatePath("/preferencias");
-    redirect("/preferencias?toast=preferences_saved");
+    redirect(`/preferencias?toast=preferences_notify_saved&qfb=${Date.now()}`);
   }
 
   return (
@@ -305,6 +336,12 @@ export default async function PreferencesPage({ searchParams }: PreferencesPageP
                 </button>
               </div>
           </form>
+
+          <PreferencesConcursosForm
+            initialEnabled={Boolean(user.notifyConcursosEnabled)}
+            initialRegions={user.notifyConcursosRegions}
+            regions={Array.from(NOTIFY_CONCURSOS_REGIONS)}
+          />
         </div>
       </section>
     </main>
@@ -325,6 +362,8 @@ async function loadUserPreferences(userId: string) {
         notifyEmailEnabled: true,
         notifyTelegramEnabled: true,
         notifyDiscordEnabled: true,
+        notifyConcursosEnabled: true,
+        notifyConcursosRegions: true,
         notifyTelegramBotToken: true,
         notifyTelegramChatId: true,
         notifyDiscordWebhookUrl: true
@@ -356,6 +395,8 @@ async function loadUserPreferences(userId: string) {
             notifyEmailEnabled: false,
             notifyTelegramEnabled: false,
             notifyDiscordEnabled: false,
+            notifyConcursosEnabled: true,
+            notifyConcursosRegions: ["ALL", "NACIONAL"],
             notifyTelegramBotToken: null,
             notifyTelegramChatId: null,
             notifyDiscordWebhookUrl: null
@@ -375,6 +416,10 @@ function hasMissingLlmColumns(error: unknown) {
     error.message.includes("notifyEmailEnabled") ||
     error.message.includes("notifyTelegramEnabled") ||
     error.message.includes("notifyDiscordEnabled") ||
+    error.message.includes("notifyConcursosEnabled") ||
+    error.message.includes("notifyConcursosRegions") ||
+    error.message.includes("notifyConcursosNotifiedOpen") ||
+    error.message.includes("notifyConcursosNotifiedLastDay") ||
     error.message.includes("notifyTelegramBotToken") ||
     error.message.includes("notifyTelegramChatId") ||
     error.message.includes("notifyDiscordWebhookUrl") ||

@@ -12,6 +12,7 @@ O **Gabarita** centraliza a rotina do concurseiro em um único produto:
 - correção discursiva (texto/PDF/imagem);
 - dashboard de desempenho com métricas de evolução;
 - biblioteca de materiais, anexos e referências;
+- monitor de concursos abertos e previstos com sincronização por feed/API;
 - notificações diárias por e-mail, Telegram e Discord.
 
 ### Stack principal
@@ -89,3 +90,11 @@ npm run dev
 - Scan de anexos é opcional via `ENABLE_ATTACHMENT_SCAN`.
 - Se ativar scan, execute o worker: `npm run scan:attachments` (run-once) ou `npm run scan:attachments:watch`.
 - Com `ENFORCE_CLEAN_ATTACHMENT_ACCESS=true`, somente anexos com status `CLEAN` ficam disponíveis para download/preview.
+- Monitor de concursos:
+  - `CONCURSOS_FEED_URL`: fonte única (aceita `{uf}`).
+  - `CONCURSOS_FEED_URLS`: múltiplas fontes separadas por vírgula (prioridade sobre URL única).
+  - `CONCURSOS_FEED_TEMPLATE`: fallback padrão quando as duas acima estiverem vazias.
+  - `CONCURSOS_FEED_TOKEN`: token Bearer opcional.
+  - `CONCURSOS_REFRESH_MINUTES`: tempo de cache por UF no banco antes de consultar API de novo.
+  - Comportamento atual: a tela abre com `RJ` por padrão; para cada UF, consulta fonte externa apenas se não houver dado salvo ou se o cache estiver vencido.
+  - Fonte padrão no código: `https://www.pciconcursos.com.br/concursos/` com fallback para `CONCURSOS_FEED_TEMPLATE`.

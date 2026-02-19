@@ -27,6 +27,10 @@ model User {
   notifyTelegramChatId    String?
   notifyDiscordWebhookUrl String?
   notifyDailySentAt       DateTime?
+  notifyConcursosEnabled  Boolean        @default(true)
+  notifyConcursosRegions  String[]       @default(["ALL", "NACIONAL"])
+  notifyConcursosNotifiedOpen    String[] @default([])
+  notifyConcursosNotifiedLastDay String[] @default([])
   passwordHash   String
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
@@ -429,6 +433,30 @@ model RateLimitBucket {
   @@index([expiresAt])
 }
 
+model ConcursoListing {
+  id                 String         @id @default(cuid())
+  source             String
+  externalId         String
+  title              String
+  organization       String
+  state              String?
+  scope              String?
+  status             ConcursoStatus
+  registrationStart  DateTime?
+  registrationEnd    DateTime?
+  expectedNoticeDate DateTime?
+  officialUrl        String?
+  sourceUrl          String?
+  summary            String?
+  raw                Json?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  @@unique([source, externalId])
+  @@index([status, state])
+  @@index([updatedAt])
+}
+
 enum TopicStatus {
   PENDING
   IN_PROGRESS
@@ -479,4 +507,9 @@ enum ExamBoardStyle {
   MULTI_SELECT_COMBINATION_5
   GAP_FILLING_COMBINATION_5
   CASE_STUDY_OBJECTIVE_5
+}
+
+enum ConcursoStatus {
+  OPEN
+  PLANNED
 }

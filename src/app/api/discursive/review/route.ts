@@ -1,6 +1,5 @@
-import { cookies } from "next/headers";
 import { NextResponse } from "next/server";
-import { verifyAccessToken } from "@/lib/auth/jwt";
+import { getAuthenticatedUserId } from "@/lib/auth/current-user";
 import { env } from "@/lib/env";
 import { generateStructuredText } from "@/lib/llm/client";
 import { prisma } from "@/lib/prisma";
@@ -25,15 +24,11 @@ type DiscursiveReviewPayload = {
 };
 
 export async function POST(request: Request) {
-  const cookieStore = await cookies();
-  const accessToken = cookieStore.get("access_token")?.value;
-  if (!accessToken) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
-
-  const tokenPayload = await verifyAccessToken(accessToken);
-  if (!tokenPayload?.sub) return NextResponse.json({ error: "Sessão inválida." }, { status: 401 });
+  const userId = await getAuthenticatedUserId();
+  if (!userId) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
   const limitResponse = await enforceMutationRateLimit({
     request,
-    userId: tokenPayload.sub,
+    userId,
     scope: "discursive:review"
   });
   if (limitResponse) return limitResponse;
@@ -52,7 +47,7 @@ export async function POST(request: Request) {
   let userLlmProvider: "AUTO" | "OPENAI" | "OLLAMA" = "AUTO";
   try {
     const user = await prisma.user.findUnique({
-      where: { id: tokenPayload.sub },
+      where: { id: userId },
       select: {
         openAiApiKey: true,
         openAiModel: true,
@@ -276,7 +271,7 @@ export async function POST(request: Request) {
     model: usedModel
   };
   const saved = await saveDiscursiveSubmission({
-    userId: tokenPayload.sub,
+    userId,
     rubric,
     proposedTheme,
     sourceType,
