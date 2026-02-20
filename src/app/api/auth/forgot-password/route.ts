@@ -6,6 +6,8 @@ import { hashToken } from "@/lib/auth/password";
 import { isTrustedAuthRequest } from "@/lib/auth/csrf";
 import { checkRateLimit, getClientIp } from "@/lib/auth/rate-limit";
 import { env } from "@/lib/env";
+import { sendEmailText } from "@/lib/notifications/channels";
+import { buildPasswordResetEmailHtml } from "@/lib/notifications/email-templates";
 
 export async function POST(request: Request) {
   try {
@@ -57,6 +59,32 @@ export async function POST(request: Request) {
         }
       })
     ]);
+
+    const firstName = user.name?.trim().split(/\s+/)[0] || "Aluno";
+    const appOrigin = env.appUrl.trim() || new URL(request.url).origin;
+    const resetUrl = `${appOrigin.replace(/\/+$/, "")}/redefinir-senha?token=${encodeURIComponent(rawToken)}`;
+    const textLines = [
+      `Olá, ${firstName}.`,
+      "",
+      "Recebemos uma solicitação para redefinir sua senha no Gabarita.",
+      `Use o link a seguir (válido por 30 minutos): ${resetUrl}`,
+      "",
+      "Se você não solicitou, ignore este e-mail."
+    ];
+    const mail = await sendEmailText({
+      to: user.email,
+      subject: "[Gabarita] Redefinição de senha",
+      text: textLines.join("\n"),
+      html: buildPasswordResetEmailHtml({
+        firstName,
+        resetUrl,
+        expiresInMinutes: 30
+      })
+    });
+    if (!mail.ok) {
+      // Keep a non-enumerating response contract, but surface the issue in server logs.
+      console.error("forgot_password_email_error", mail.reason);
+    }
 
     return NextResponse.json({
       message: "Solicitação registrada. Verifique seu e-mail.",

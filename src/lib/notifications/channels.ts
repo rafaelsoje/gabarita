@@ -34,7 +34,7 @@ function buildEmailTransport() {
   return buildSmtpTransport() ?? buildSendmailTransport();
 }
 
-export async function sendEmailText(params: { to: string; subject: string; text: string }) {
+export async function sendEmailText(params: { to: string; subject: string; text: string; html?: string }) {
   const transporter = buildEmailTransport();
   if (!transporter) return { ok: false as const, reason: "smtp_not_configured" };
   const from = env.smtpFrom || env.smtpUser;
@@ -45,7 +45,8 @@ export async function sendEmailText(params: { to: string; subject: string; text:
       from,
       to: params.to,
       subject: params.subject,
-      text: params.text
+      text: params.text,
+      ...(params.html ? { html: params.html } : {})
     });
     return { ok: true as const, reason: "" };
   } catch (error) {

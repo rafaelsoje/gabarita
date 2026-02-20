@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAuthenticatedUserId } from "@/lib/auth/current-user";
 import { sendDiscordText, sendEmailText, sendTelegramText } from "@/lib/notifications/channels";
+import { buildTestEmailHtml } from "@/lib/notifications/email-templates";
 import { prisma } from "@/lib/prisma";
 
 type TestBody = {
@@ -45,7 +46,8 @@ export async function POST(request: Request) {
     const result = await sendEmailText({
       to: user.email,
       subject: "[Gabarita] Teste de notificação por e-mail",
-      text
+      text,
+      html: buildTestEmailHtml(firstName)
     });
     if (!result.ok) {
       return NextResponse.json({ ok: false, reason: result.reason }, { status: 400 });

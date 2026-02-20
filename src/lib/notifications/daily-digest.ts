@@ -1,4 +1,5 @@
 import { sendDiscordText, sendEmailText, sendTelegramText } from "@/lib/notifications/channels";
+import { buildDailyDigestEmailHtml } from "@/lib/notifications/email-templates";
 
 export type DailyNotificationItem = {
   title: string;
@@ -44,9 +45,17 @@ export async function dispatchDailyDigest(input: DispatchInput) {
     "Bons estudos."
   ];
   const plainText = lines.join("\n");
+  const html = buildDailyDigestEmailHtml({
+    firstName,
+    appUrl: input.appUrl,
+    dateLabel,
+    summaryLine,
+    planScopeLabel: input.planScopeLabel,
+    items: input.items
+  });
 
   const sentResults = await Promise.all([
-    sendByEmailIfEnabled(input.user, `[Gabarita] Plano de hoje • ${dateLabel}`, plainText),
+    sendByEmailIfEnabled(input.user, `[Gabarita] Plano de hoje • ${dateLabel}`, plainText, html),
     sendByTelegramIfEnabled(input.user, plainText),
     sendByDiscordIfEnabled(input.user, plainText)
   ]);
@@ -54,9 +63,9 @@ export async function dispatchDailyDigest(input: DispatchInput) {
   return { sentAny: sentResults.some(Boolean) };
 }
 
-async function sendByEmailIfEnabled(user: DailyDigestUser, subject: string, text: string) {
+async function sendByEmailIfEnabled(user: DailyDigestUser, subject: string, text: string, html: string) {
   if (!user.notifyEmailEnabled) return false;
-  const result = await sendEmailText({ to: user.email, subject, text });
+  const result = await sendEmailText({ to: user.email, subject, text, html });
   return result.ok;
 }
 
