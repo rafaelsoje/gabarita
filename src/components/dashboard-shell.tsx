@@ -151,6 +151,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   const userMenuRef = useRef<HTMLDivElement | null>(null);
   const notificationsRef = useRef<HTMLDivElement | null>(null);
   const webNotifiedSignatureRef = useRef("");
+  const consumedToastKeyRef = useRef("");
   const [viewer, setViewer] = useState<{ name: string | null; email: string; avatarUrl: string | null } | null>(null);
   const [streakDays, setStreakDays] = useState(0);
   const [notifications, setNotifications] = useState<{
@@ -194,6 +195,10 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const toastCode = searchParams.get("toast");
     if (!toastCode) return;
+    const qfb = searchParams.get("qfb") || "";
+    const toastKey = `${toastCode}:${qfb}`;
+    if (consumedToastKeyRef.current === toastKey) return;
+    consumedToastKeyRef.current = toastKey;
 
     const map: Record<string, { kind: "success" | "error"; title: string; message: string }> = {
       plan_created: { kind: "success", title: "Plano", message: "Plano criado com sucesso." },
