@@ -3,15 +3,20 @@ import { env } from "@/lib/env";
 import { unsealSecret } from "@/lib/security/secrets";
 
 function buildSmtpTransport() {
-  if (!env.smtpHost || !env.smtpUser || !env.smtpPass) return null;
+  if (!env.smtpHost) return null;
+  const hasAuth = Boolean(env.smtpUser && env.smtpPass);
   return nodemailer.createTransport({
     host: env.smtpHost,
     port: env.smtpPort,
     secure: env.smtpSecure,
-    auth: {
-      user: env.smtpUser,
-      pass: env.smtpPass
-    }
+    ...(hasAuth
+      ? {
+          auth: {
+            user: env.smtpUser,
+            pass: env.smtpPass
+          }
+        }
+      : {})
   });
 }
 

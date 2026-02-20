@@ -62,7 +62,7 @@ export default async function PreferencesPage({ searchParams }: PreferencesPageP
 
   if (!user) redirect("/entrar");
 
-  const emailChannelConfigured = Boolean(env.smtpHost && env.smtpUser && env.smtpPass && (env.smtpFrom || env.smtpUser));
+  const emailChannelConfigured = Boolean(env.smtpHost && (env.smtpFrom || env.smtpUser));
   const telegramChannelConfigured = Boolean((user.notifyTelegramBotToken ?? "").trim() && (user.notifyTelegramChatId ?? "").trim());
   const discordChannelConfigured = Boolean((user.notifyDiscordWebhookUrl ?? "").trim().startsWith("https://"));
 

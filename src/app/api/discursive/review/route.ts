@@ -4,6 +4,7 @@ import { env } from "@/lib/env";
 import { generateStructuredText } from "@/lib/llm/client";
 import { prisma } from "@/lib/prisma";
 import { enforceMutationRateLimit } from "@/lib/api/mutation-rate-limit";
+import { isFormDataFileLike } from "@/lib/http/form-data-file";
 import { unsealSecret } from "@/lib/security/secrets";
 import { saveDiscursiveSubmission } from "@/lib/storage/discursive-submissions";
 
@@ -72,7 +73,7 @@ export async function POST(request: Request) {
   let sourceFileMimeType = "";
   let sourceFileOriginalName = "";
 
-  if (file instanceof File && file.size > 0) {
+  if (isFormDataFileLike(file) && file.size > 0) {
     if (file.size > MAX_FILE_BYTES) {
       return NextResponse.json({ error: "Arquivo excede 8MB." }, { status: 400 });
     }

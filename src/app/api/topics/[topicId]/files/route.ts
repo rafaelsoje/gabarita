@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getAuthenticatedUserId } from "@/lib/auth/current-user";
 import { badRequest, notFound, serverError, unauthorized } from "@/lib/api/http";
 import { enforceMutationRateLimit } from "@/lib/api/mutation-rate-limit";
+import { isFormDataFileLike } from "@/lib/http/form-data-file";
 import { buildInitialAttachmentScanData } from "@/lib/storage/attachment-scan";
 import {
   attachmentContentUrl,
@@ -126,7 +127,7 @@ export async function POST(request: Request, { params }: Params) {
 
     const formData = await request.formData();
     const rawFiles = formData.getAll("files");
-    const files = rawFiles.filter((entry): entry is File => entry instanceof File && entry.size > 0);
+    const files = rawFiles.filter((entry): entry is File => isFormDataFileLike(entry) && entry.size > 0);
 
     if (files.length === 0) return badRequest("Nenhum arquivo enviado.");
     if (files.length > MAX_FILES_PER_UPLOAD) {

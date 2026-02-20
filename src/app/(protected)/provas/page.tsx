@@ -5,6 +5,7 @@ import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { ExamResultsEvolutionChart } from "@/components/exam-results-evolution-chart";
 import { ExamPdfPicker } from "@/components/exam-pdf-picker";
 import { getAuthenticatedUserId } from "@/lib/auth/current-user";
+import { isFormDataFileLike } from "@/lib/http/form-data-file";
 import { prisma } from "@/lib/prisma";
 import {
   deleteExamResult,
@@ -141,7 +142,7 @@ export default async function ProvasPage({ searchParams }: ProvasPageProps) {
           bytes: Buffer;
         }
       | null = null;
-    if (examPdf instanceof File && examPdf.size > 0) {
+    if (isFormDataFileLike(examPdf) && examPdf.size > 0) {
       const mimeType = examPdf.type || "application/octet-stream";
       if (mimeType !== "application/pdf") redirect("/provas?toast=exam_result_file_invalid");
       if (examPdf.size > MAX_EXAM_PDF_BYTES) redirect("/provas?toast=exam_result_file_too_large");

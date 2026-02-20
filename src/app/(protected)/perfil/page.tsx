@@ -9,6 +9,7 @@ import { AvatarUploadField } from "@/components/avatar-upload-field";
 import { ConfirmSubmitButton } from "@/components/confirm-submit-button";
 import { deleteUploadByUrl, saveUploadBuffer } from "@/lib/storage/local-upload";
 import { deletePlanWithFiles } from "@/lib/storage/study-cleanup";
+import { isFormDataFileLike } from "@/lib/http/form-data-file";
 
 const MAX_IMAGE_SIZE = 2 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
@@ -114,7 +115,7 @@ export default async function ProfilePage() {
     if (!currentUser) redirect("/entrar");
 
     let uploadedAvatarUrl: string | null = null;
-    if (fileRaw instanceof File && fileRaw.size > 0) {
+    if (isFormDataFileLike(fileRaw) && fileRaw.size > 0) {
       if (ALLOWED_IMAGE_TYPES.has(fileRaw.type) && fileRaw.size <= MAX_IMAGE_SIZE) {
         const buffer = Buffer.from(await fileRaw.arrayBuffer());
         const extension = fileRaw.type === "image/png" ? "png" : fileRaw.type === "image/webp" ? "webp" : "jpg";

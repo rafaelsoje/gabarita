@@ -14,6 +14,7 @@ import { PlanReferenceLinksManager } from "@/components/plan-reference-links-man
 import { HomeInsightCard } from "@/components/home-insight-card";
 import { getNextReviewDate } from "@/lib/study/review-schedule";
 import { computeCurrentStreakDays } from "@/lib/study/activity-stats";
+import { isFormDataFileLike } from "@/lib/http/form-data-file";
 import { deleteUploadByUrl, saveUploadBuffer } from "@/lib/storage/local-upload";
 import { deletePlanWithFiles } from "@/lib/storage/study-cleanup";
 
@@ -838,7 +839,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     const role = typeof roleRaw === "string" ? roleRaw.trim() : "";
     const examDateValue = typeof examDateRaw === "string" ? examDateRaw.trim() : "";
     const genericStudy = genericRaw === "on";
-    const planImage = planImageRaw instanceof File ? planImageRaw : null;
+    const planImage = isFormDataFileLike(planImageRaw) ? planImageRaw : null;
 
     if (title.length < 2 || title.length > 160) return;
 
@@ -904,7 +905,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     const role = typeof roleRaw === "string" ? roleRaw.trim() : "";
     const examDateValue = typeof examDateRaw === "string" ? examDateRaw.trim() : "";
     const genericStudy = genericRaw === "on";
-    const planImage = planImageRaw instanceof File ? planImageRaw : null;
+    const planImage = isFormDataFileLike(planImageRaw) ? planImageRaw : null;
     const removePlanImage = removeImageRaw === "on";
 
     if (!planId || title.length < 2 || title.length > 160) return;
