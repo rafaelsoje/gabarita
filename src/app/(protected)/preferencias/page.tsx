@@ -2,6 +2,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { PreferencesNotificationTestButtons } from "@/components/preferences-notification-test-buttons";
 import { PreferencesOpenAiTestButton } from "@/components/preferences-openai-test-button";
+import { PreferencesOllamaTestButton } from "@/components/preferences-ollama-test-button";
 import { PreferencesConcursosForm } from "@/components/preferences-concursos-form";
 import { getAuthenticatedUserId } from "@/lib/auth/current-user";
 import { env } from "@/lib/env";
@@ -246,6 +247,7 @@ export default async function PreferencesPage({ searchParams }: PreferencesPageP
 
               <div className="profileActions">
                 <PreferencesOpenAiTestButton formId="preferences-llm-form" />
+                <PreferencesOllamaTestButton />
                 <button className="button createPlanBtn" type="submit">
                   Salvar conta LLM
                 </button>
