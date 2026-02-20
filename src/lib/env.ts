@@ -14,6 +14,8 @@ export const env = {
   smtpUser: process.env.SMTP_USER ?? "",
   smtpPass: process.env.SMTP_PASS ?? "",
   smtpFrom: process.env.SMTP_FROM ?? "",
+  smtpTransport: normalizeSmtpTransport(process.env.SMTP_TRANSPORT),
+  sendmailPath: process.env.SENDMAIL_PATH ?? "/usr/sbin/sendmail",
   telegramBotToken: process.env.TELEGRAM_BOT_TOKEN ?? "",
   telegramApiBase: process.env.TELEGRAM_API_BASE ?? "https://api.telegram.org",
   allowResetTokenInResponse: parseBoolean(process.env.ALLOW_RESET_TOKEN_IN_RESPONSE),
@@ -44,4 +46,11 @@ function parseIntSafe(value: string | undefined, fallback: number) {
   if (!value) return fallback;
   const parsed = Number.parseInt(value, 10);
   return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+function normalizeSmtpTransport(value: string | undefined) {
+  const parsed = (value ?? "auto").trim().toLowerCase();
+  if (parsed === "smtp") return "smtp" as const;
+  if (parsed === "sendmail") return "sendmail" as const;
+  return "auto" as const;
 }

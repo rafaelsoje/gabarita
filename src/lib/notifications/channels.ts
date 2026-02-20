@@ -20,8 +20,22 @@ function buildSmtpTransport() {
   });
 }
 
+function buildSendmailTransport() {
+  return nodemailer.createTransport({
+    sendmail: true,
+    newline: "unix",
+    path: env.sendmailPath || "/usr/sbin/sendmail"
+  });
+}
+
+function buildEmailTransport() {
+  if (env.smtpTransport === "smtp") return buildSmtpTransport();
+  if (env.smtpTransport === "sendmail") return buildSendmailTransport();
+  return buildSmtpTransport() ?? buildSendmailTransport();
+}
+
 export async function sendEmailText(params: { to: string; subject: string; text: string }) {
-  const transporter = buildSmtpTransport();
+  const transporter = buildEmailTransport();
   if (!transporter) return { ok: false as const, reason: "smtp_not_configured" };
   const from = env.smtpFrom || env.smtpUser;
   if (!from) return { ok: false as const, reason: "smtp_from_missing" };
