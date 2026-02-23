@@ -10,8 +10,12 @@ function sanitizeFileName(fileName: string) {
   return safe;
 }
 
-function privatePathFor(fileName: string) {
-  return path.join(PRIVATE_TOPIC_FILES_DIR, fileName);
+function sanitizeUserId(userId: string) {
+  return userId.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 120);
+}
+
+function privatePathForUser(userId: string, fileName: string) {
+  return path.join(PRIVATE_TOPIC_FILES_DIR, sanitizeUserId(userId), fileName);
 }
 
 function legacyPathFor(fileName: string) {
@@ -24,21 +28,22 @@ export function attachmentContentUrl(fileId: string, download = false) {
     : `/api/topics/files/${fileId}`;
 }
 
-export async function writeTopicFile(fileName: string, buffer: Buffer) {
+export async function writeTopicFile(userId: string, fileName: string, buffer: Buffer) {
   const safeFileName = sanitizeFileName(fileName);
   if (!safeFileName) {
     throw new Error("Invalid file name");
   }
 
-  await fs.mkdir(PRIVATE_TOPIC_FILES_DIR, { recursive: true });
-  await fs.writeFile(privatePathFor(safeFileName), buffer);
+  const dir = path.join(PRIVATE_TOPIC_FILES_DIR, sanitizeUserId(userId));
+  await fs.mkdir(dir, { recursive: true });
+  await fs.writeFile(privatePathForUser(userId, safeFileName), buffer);
 }
 
-export async function readTopicFile(fileName: string) {
+export async function readTopicFile(userId: string, fileName: string) {
   const safeFileName = sanitizeFileName(fileName);
   if (!safeFileName) return null;
 
-  const existingPath = await resolveTopicFilePath(safeFileName);
+  const existingPath = await resolveTopicFilePath(userId, safeFileName);
   if (!existingPath) {
     return null;
   }
@@ -51,33 +56,40 @@ export async function readTopicFile(fileName: string) {
   }
 }
 
-export async function deleteTopicFile(fileName: string | null | undefined) {
+export async function deleteTopicFile(userId: string, fileName: string | null | undefined) {
   const safeFileName = sanitizeFileName(fileName ?? "");
   if (!safeFileName) return;
 
-  await fs.unlink(privatePathFor(safeFileName)).catch(() => undefined);
+  await fs.unlink(privatePathForUser(userId, safeFileName)).catch(() => undefined);
+  await fs.unlink(path.join(PRIVATE_TOPIC_FILES_DIR, safeFileName)).catch(() => undefined);
   await fs.unlink(legacyPathFor(safeFileName)).catch(() => undefined);
 }
 
-export async function deleteTopicFiles(fileNames: Array<string | null | undefined>) {
+export async function deleteTopicFiles(userId: string, fileNames: Array<string | null | undefined>) {
   const unique = [
     ...new Set(
       fileNames.filter((value): value is string => typeof value === "string" && value.length > 0)
     )
   ];
   for (const fileName of unique) {
-    await deleteTopicFile(fileName);
+    await deleteTopicFile(userId, fileName);
   }
 }
 
-export async function resolveTopicFilePath(fileName: string) {
+export async function resolveTopicFilePath(userId: string, fileName: string) {
   const safeFileName = sanitizeFileName(fileName);
   if (!safeFileName) return null;
 
-  const privatePath = privatePathFor(safeFileName);
+  const privatePath = privatePathForUser(userId, safeFileName);
   try {
     await fs.access(privatePath);
     return privatePath;
+  } catch {}
+
+  const legacyPrivatePath = path.join(PRIVATE_TOPIC_FILES_DIR, safeFileName);
+  try {
+    await fs.access(legacyPrivatePath);
+    return legacyPrivatePath;
   } catch {}
 
   const legacyPath = legacyPathFor(safeFileName);

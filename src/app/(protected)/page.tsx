@@ -282,6 +282,7 @@ async function savePlanImage(file: File, userId: string) {
   const saved = await saveUploadBuffer({
     kind: "plans",
     prefix: userId,
+    ownerId: userId,
     extension,
     buffer
   });

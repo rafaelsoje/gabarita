@@ -39,7 +39,7 @@ export async function GET(request: Request, { params }: Params) {
       );
     }
 
-    const content = await readPlanFile(fileRecord.fileName);
+    const content = await readPlanFile(userId, fileRecord.fileName);
     if (!content) return notFound("Arquivo não encontrado no armazenamento.");
 
     const url = new URL(request.url);
@@ -86,7 +86,7 @@ export async function DELETE(request: Request, { params }: Params) {
     if (!fileRecord) return notFound();
 
     await prisma.planReferenceFile.delete({ where: { id: fileRecord.id } });
-    await deletePlanFile(fileRecord.fileName);
+    await deletePlanFile(userId, fileRecord.fileName);
 
     return NextResponse.json({ message: "Arquivo removido." });
   } catch {

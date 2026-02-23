@@ -6,26 +6,39 @@ export type UploadKind = "avatars" | "plans" | "topic-files";
 
 const UPLOADS_ROOT = path.join(process.cwd(), "public", "uploads");
 
-function getUploadDir(kind: UploadKind) {
-  return path.join(UPLOADS_ROOT, kind);
+function sanitizeOwnerId(ownerId: string) {
+  return ownerId.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 120);
 }
 
-function publicUrlFor(kind: UploadKind, fileName: string) {
-  return `/uploads/${kind}/${fileName}`;
+function getUploadDir(kind: UploadKind, ownerId?: string) {
+  return ownerId
+    ? path.join(UPLOADS_ROOT, kind, sanitizeOwnerId(ownerId))
+    : path.join(UPLOADS_ROOT, kind);
+}
+
+function publicUrlFor(kind: UploadKind, fileName: string, ownerId?: string) {
+  return ownerId
+    ? `/uploads/${kind}/${sanitizeOwnerId(ownerId)}/${fileName}`
+    : `/uploads/${kind}/${fileName}`;
 }
 
 function resolveUploadPath(publicUrl: string, kind: UploadKind) {
   const expectedPrefix = `/uploads/${kind}/`;
   if (!publicUrl.startsWith(expectedPrefix)) return null;
 
-  const fileName = path.posix.basename(publicUrl);
+  const relative = publicUrl.slice(expectedPrefix.length);
+  const parts = relative.split("/").filter(Boolean);
+  if (parts.length === 0 || parts.length > 2) return null;
+
+  const ownerId = parts.length === 2 ? sanitizeOwnerId(parts[0]) : null;
+  const fileName = path.posix.basename(parts[parts.length - 1]);
   if (!fileName || fileName === "." || fileName === "..") return null;
 
-  const dir = getUploadDir(kind);
+  const dir = getUploadDir(kind, ownerId || undefined);
   const absolutePath = path.join(dir, fileName);
   if (!absolutePath.startsWith(`${dir}${path.sep}`) && absolutePath !== dir) return null;
 
-  return { absolutePath, fileName };
+  return { absolutePath, fileName, ownerId };
 }
 
 export async function saveUploadBuffer(params: {
@@ -33,19 +46,20 @@ export async function saveUploadBuffer(params: {
   prefix: string;
   extension: string;
   buffer: Buffer;
+  ownerId?: string;
 }) {
-  const { kind, prefix, extension, buffer } = params;
+  const { kind, prefix, extension, buffer, ownerId } = params;
   const safePrefix = prefix.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 80) || "file";
   const safeExt = extension.replace(/[^a-zA-Z0-9]/g, "").slice(0, 12) || "bin";
   const fileName = `${safePrefix}-${randomUUID()}.${safeExt}`;
-  const dir = getUploadDir(kind);
+  const dir = getUploadDir(kind, ownerId);
 
   await fs.mkdir(dir, { recursive: true });
   await fs.writeFile(path.join(dir, fileName), buffer);
 
   return {
     fileName,
-    publicUrl: publicUrlFor(kind, fileName)
+    publicUrl: publicUrlFor(kind, fileName, ownerId)
   };
 }
 

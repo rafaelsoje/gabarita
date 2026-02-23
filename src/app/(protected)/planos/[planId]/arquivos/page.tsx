@@ -81,7 +81,7 @@ export default async function PlanFilesPage({ params }: PageProps) {
     if (!file) return;
 
     await prisma.planReferenceFile.delete({ where: { id: file.id } });
-    await deletePlanFile(file.fileName);
+    await deletePlanFile(currentUserId, file.fileName);
 
     revalidatePath(`/planos/${currentPlan.id}/arquivos`);
     revalidatePath(`/disciplinas?planId=${currentPlan.id}`);

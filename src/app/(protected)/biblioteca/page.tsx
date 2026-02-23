@@ -139,7 +139,7 @@ export default async function LibraryPage({ searchParams }: LibraryPageProps) {
     if (!attachment) return;
 
     await prisma.topicAttachment.delete({ where: { id: attachment.id } });
-    await deleteTopicFile(attachment.fileName);
+    await deleteTopicFile(currentUserId, attachment.fileName);
 
     revalidatePath("/biblioteca");
     revalidatePath("/edital");

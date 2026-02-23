@@ -10,8 +10,12 @@ function sanitizeFileName(fileName: string) {
   return safe;
 }
 
-function privatePathFor(fileName: string) {
-  return path.join(PRIVATE_PLAN_FILES_DIR, fileName);
+function sanitizeUserId(userId: string) {
+  return userId.replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 120);
+}
+
+function privatePathForUser(userId: string, fileName: string) {
+  return path.join(PRIVATE_PLAN_FILES_DIR, sanitizeUserId(userId), fileName);
 }
 
 function legacyPathFor(fileName: string) {
@@ -22,21 +26,22 @@ export function planFileContentUrl(fileId: string, download = false) {
   return download ? `/api/plans/files/${fileId}?download=1` : `/api/plans/files/${fileId}`;
 }
 
-export async function writePlanFile(fileName: string, buffer: Buffer) {
+export async function writePlanFile(userId: string, fileName: string, buffer: Buffer) {
   const safeFileName = sanitizeFileName(fileName);
   if (!safeFileName) {
     throw new Error("Invalid file name");
   }
 
-  await fs.mkdir(PRIVATE_PLAN_FILES_DIR, { recursive: true });
-  await fs.writeFile(privatePathFor(safeFileName), buffer);
+  const dir = path.join(PRIVATE_PLAN_FILES_DIR, sanitizeUserId(userId));
+  await fs.mkdir(dir, { recursive: true });
+  await fs.writeFile(privatePathForUser(userId, safeFileName), buffer);
 }
 
-export async function readPlanFile(fileName: string) {
+export async function readPlanFile(userId: string, fileName: string) {
   const safeFileName = sanitizeFileName(fileName);
   if (!safeFileName) return null;
 
-  const existingPath = await resolvePlanFilePath(safeFileName);
+  const existingPath = await resolvePlanFilePath(userId, safeFileName);
   if (!existingPath) {
     return null;
   }
@@ -49,33 +54,40 @@ export async function readPlanFile(fileName: string) {
   }
 }
 
-export async function deletePlanFile(fileName: string | null | undefined) {
+export async function deletePlanFile(userId: string, fileName: string | null | undefined) {
   const safeFileName = sanitizeFileName(fileName ?? "");
   if (!safeFileName) return;
 
-  await fs.unlink(privatePathFor(safeFileName)).catch(() => undefined);
+  await fs.unlink(privatePathForUser(userId, safeFileName)).catch(() => undefined);
+  await fs.unlink(path.join(PRIVATE_PLAN_FILES_DIR, safeFileName)).catch(() => undefined);
   await fs.unlink(legacyPathFor(safeFileName)).catch(() => undefined);
 }
 
-export async function deletePlanFiles(fileNames: Array<string | null | undefined>) {
+export async function deletePlanFiles(userId: string, fileNames: Array<string | null | undefined>) {
   const unique = [
     ...new Set(
       fileNames.filter((value): value is string => typeof value === "string" && value.length > 0)
     )
   ];
   for (const fileName of unique) {
-    await deletePlanFile(fileName);
+    await deletePlanFile(userId, fileName);
   }
 }
 
-export async function resolvePlanFilePath(fileName: string) {
+export async function resolvePlanFilePath(userId: string, fileName: string) {
   const safeFileName = sanitizeFileName(fileName);
   if (!safeFileName) return null;
 
-  const privatePath = privatePathFor(safeFileName);
+  const privatePath = privatePathForUser(userId, safeFileName);
   try {
     await fs.access(privatePath);
     return privatePath;
+  } catch {}
+
+  const legacyPrivatePath = path.join(PRIVATE_PLAN_FILES_DIR, safeFileName);
+  try {
+    await fs.access(legacyPrivatePath);
+    return legacyPrivatePath;
   } catch {}
 
   const legacyPath = legacyPathFor(safeFileName);

@@ -45,7 +45,24 @@ async function processBatch() {
     },
     orderBy: { createdAt: "asc" },
     take: batchSize,
-    select: { id: true, fileName: true, originalName: true }
+    select: {
+      id: true,
+      fileName: true,
+      originalName: true,
+      topic: {
+        select: {
+          subject: {
+            select: {
+              plan: {
+                select: {
+                  userId: true
+                }
+              }
+            }
+          }
+        }
+      }
+    }
   });
 
   if (candidates.length === 0) return 0;
@@ -76,7 +93,8 @@ async function processBatch() {
 }
 
 async function scanAttachment(attachment) {
-  const absolutePath = await resolvePath(attachment.fileName);
+  const userId = attachment.topic?.subject?.plan?.userId || "";
+  const absolutePath = await resolvePath(userId, attachment.fileName);
   if (!absolutePath) {
     await markStatus(attachment.id, AttachmentScanStatus.ERROR, "Arquivo físico não encontrado.");
     return;
@@ -111,14 +129,21 @@ async function markStatus(attachmentId, status, message) {
   });
 }
 
-async function resolvePath(fileName) {
+async function resolvePath(userId, fileName) {
   const safeName = path.posix.basename(fileName || "");
   if (!safeName || safeName === "." || safeName === "..") return null;
 
-  const privatePath = path.join(privateDir, safeName);
+  const safeUserId = sanitizeUserId(userId);
+  const privatePath = safeUserId ? path.join(privateDir, safeUserId, safeName) : path.join(privateDir, safeName);
   try {
     await fs.access(privatePath);
     return privatePath;
+  } catch {}
+
+  const legacyPrivatePath = path.join(privateDir, safeName);
+  try {
+    await fs.access(legacyPrivatePath);
+    return legacyPrivatePath;
   } catch {}
 
   const legacyPath = path.join(legacyDir, safeName);
@@ -179,6 +204,10 @@ function parsePositiveInt(value, fallback) {
 function truncateResult(message) {
   if (!message) return null;
   return message.slice(0, 2000);
+}
+
+function sanitizeUserId(userId) {
+  return String(userId || "").replace(/[^a-zA-Z0-9_-]/g, "_").slice(0, 120);
 }
 
 function sleep(ms) {

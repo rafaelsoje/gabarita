@@ -122,6 +122,7 @@ export default async function ProfilePage() {
         const saved = await saveUploadBuffer({
           kind: "avatars",
           prefix: currentUserId,
+          ownerId: currentUserId,
           extension,
           buffer
         });

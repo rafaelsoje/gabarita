@@ -156,7 +156,7 @@ export async function POST(request: Request, { params }: Params) {
       const safeOriginalName = sanitizeOriginalName(file.name);
       const fileName = `${planId}-${Date.now()}-${randomUUID().slice(0, 8)}.${ext}`;
       const buffer = Buffer.from(await file.arrayBuffer());
-      await writePlanFile(fileName, buffer);
+      await writePlanFile(userId, fileName, buffer);
       writtenFileNames.push(fileName);
 
       toCreate.push({
@@ -197,7 +197,7 @@ export async function POST(request: Request, { params }: Params) {
         { status: 201 }
       );
     } catch {
-      await deletePlanFiles(writtenFileNames);
+      await deletePlanFiles(userId, writtenFileNames);
       return serverError();
     }
   } catch {

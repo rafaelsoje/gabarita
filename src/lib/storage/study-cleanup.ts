@@ -42,7 +42,7 @@ export async function deleteTopicWithFiles(params: { userId: string; topicId: st
 
   const attachmentUrls = topic.attachments.map((attachment) => attachment.fileName);
   await prisma.topic.delete({ where: { id: topic.id } });
-  await deleteTopicFiles(attachmentUrls);
+  await deleteTopicFiles(userId, attachmentUrls);
   return true;
 }
 
@@ -69,7 +69,7 @@ export async function deleteSubjectWithFiles(params: { userId: string; subjectId
 
   const attachmentUrls = collectAttachmentUrlsFromSubject(subject);
   await prisma.subject.delete({ where: { id: subject.id } });
-  await deleteTopicFiles(attachmentUrls);
+  await deleteTopicFiles(userId, attachmentUrls);
   return true;
 }
 
@@ -106,8 +106,8 @@ export async function deletePlanWithFiles(params: { userId: string; planId: stri
   const planImageUrl = plan.imageUrl;
 
   await prisma.plan.delete({ where: { id: plan.id } });
-  await deleteTopicFiles(attachmentUrls);
-  await deletePlanFiles(referenceFileNames);
+  await deleteTopicFiles(userId, attachmentUrls);
+  await deletePlanFiles(userId, referenceFileNames);
   await deleteUploadByUrl(planImageUrl, "plans");
   return true;
 }

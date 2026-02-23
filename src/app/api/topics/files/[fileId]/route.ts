@@ -44,7 +44,7 @@ export async function GET(request: Request, { params }: Params) {
       );
     }
 
-    const content = await readTopicFile(fileRecord.fileName);
+    const content = await readTopicFile(userId, fileRecord.fileName);
     if (!content) return notFound("Arquivo não encontrado no armazenamento.");
 
     const url = new URL(request.url);
@@ -96,7 +96,7 @@ export async function DELETE(request: Request, { params }: Params) {
     if (!fileRecord) return notFound();
 
     await prisma.topicAttachment.delete({ where: { id: fileRecord.id } });
-    await deleteTopicFile(fileRecord.fileName);
+    await deleteTopicFile(userId, fileRecord.fileName);
 
     return NextResponse.json({ message: "Arquivo removido." });
   } catch {
