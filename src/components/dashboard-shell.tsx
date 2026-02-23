@@ -192,6 +192,33 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     0
   );
 
+  function safeStorageGet(key: string) {
+    if (typeof window === "undefined") return null;
+    try {
+      return window.localStorage.getItem(key);
+    } catch {
+      return null;
+    }
+  }
+
+  function safeStorageSet(key: string, value: string) {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem(key, value);
+    } catch {
+      // Ignore storage failures (privacy mode/quota).
+    }
+  }
+
+  function safeStorageRemove(key: string) {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.removeItem(key);
+    } catch {
+      // Ignore storage failures (privacy mode/quota).
+    }
+  }
+
   useEffect(() => {
     const toastCode = searchParams.get("toast");
     if (!toastCode) return;
@@ -345,7 +372,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const raw = window.localStorage.getItem(notificationSeenStorageKey);
+    const raw = safeStorageGet(notificationSeenStorageKey);
     if (!raw) {
       setSeenNotificationIds([]);
       return;
@@ -363,9 +390,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     setSeenNotificationIds((prev) => {
       const filtered = prev.filter((id) => validIds.has(id));
       if (filtered.length === prev.length) return prev;
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(notificationSeenStorageKey, JSON.stringify(filtered));
-      }
+      safeStorageSet(notificationSeenStorageKey, JSON.stringify(filtered));
       return filtered;
     });
   }, [notifications.items, notificationSeenStorageKey]);
@@ -373,11 +398,12 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (typeof window === "undefined" || typeof Notification === "undefined") return;
     if (unreadNotificationsTotal <= 0) return;
+    const isSeen = (itemId: string) => seenNotificationIds.includes(itemId);
 
     const dayKey = notificationDayKey;
     const scopeKey = notificationScopeKey;
     const countsSignature = notifications.items
-      .filter((item) => !seenNotificationsSet.has(item.id))
+      .filter((item) => !isSeen(item.id))
       .map((item) => `${item.id}:${item.count}`)
       .join("|");
     const signature = `${dayKey}|${scopeKey}|${countsSignature}`;
@@ -385,9 +411,9 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     webNotifiedSignatureRef.current = signature;
 
     const deliveredKey = `gabarita:web-notify:${signature}`;
-    if (window.localStorage.getItem(deliveredKey) === "1") return;
+    if (safeStorageGet(deliveredKey) === "1") return;
 
-    const relevantItems = notifications.items.filter((item) => item.count > 0 && !seenNotificationsSet.has(item.id));
+    const relevantItems = notifications.items.filter((item) => item.count > 0 && !isSeen(item.id));
     if (relevantItems.length === 0) return;
 
     const primary = relevantItems[0];
@@ -397,15 +423,19 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
       .join(" • ");
 
     const showNotification = () => {
-      const browserNotification = new Notification("Gabarita • Pendências de hoje", {
-        body: summary,
-        tag: `gabarita-day-${dayKey}-${scopeKey}`
-      });
-      browserNotification.onclick = () => {
-        window.focus();
-        window.location.href = primary.href || "/";
-      };
-      window.localStorage.setItem(deliveredKey, "1");
+      try {
+        const browserNotification = new Notification("Gabarita • Pendências de hoje", {
+          body: summary,
+          tag: `gabarita-day-${dayKey}-${scopeKey}`
+        });
+        browserNotification.onclick = () => {
+          window.focus();
+          window.location.href = primary.href || "/";
+        };
+        safeStorageSet(deliveredKey, "1");
+      } catch {
+        // Ignore Notification API runtime errors.
+      }
     };
 
     if (Notification.permission === "granted") {
@@ -416,22 +446,20 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     if (Notification.permission !== "default") return;
 
     const permissionAskedKey = "gabarita:web-notify:permission-asked";
-    if (window.localStorage.getItem(permissionAskedKey) === "1") return;
-    window.localStorage.setItem(permissionAskedKey, "1");
+    if (safeStorageGet(permissionAskedKey) === "1") return;
+    safeStorageSet(permissionAskedKey, "1");
     void Notification.requestPermission().then((permission) => {
       if (permission === "granted") {
         showNotification();
       }
-    });
+    }).catch(() => undefined);
   }, [notifications, currentPlanId, unreadNotificationsTotal, seenNotificationIds, notificationDayKey, notificationScopeKey]);
 
   function markNotificationAsSeen(itemId: string) {
     setSeenNotificationIds((prev) => {
       if (prev.includes(itemId)) return prev;
       const next = [...prev, itemId];
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem(notificationSeenStorageKey, JSON.stringify(next));
-      }
+      safeStorageSet(notificationSeenStorageKey, JSON.stringify(next));
       return next;
     });
   }
@@ -439,9 +467,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   function markAllNotificationsAsSeen() {
     const allIds = notifications.items.map((item) => item.id);
     setSeenNotificationIds(allIds);
-    if (typeof window !== "undefined") {
-      window.localStorage.setItem(notificationSeenStorageKey, JSON.stringify(allIds));
-    }
+    safeStorageSet(notificationSeenStorageKey, JSON.stringify(allIds));
   }
 
   useEffect(() => {
@@ -470,7 +496,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
   }, [pathname, searchParams]);
 
   useEffect(() => {
-    const saved = typeof window !== "undefined" ? window.localStorage.getItem("theme") : null;
+    const saved = safeStorageGet("theme");
     const preferredDark = typeof window !== "undefined" ? window.matchMedia("(prefers-color-scheme: dark)").matches : false;
     const nextTheme = saved === "dark" || saved === "light" ? saved : preferredDark ? "dark" : "light";
     setTheme(nextTheme);
@@ -481,7 +507,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     const nextTheme = theme === "dark" ? "light" : "dark";
     setTheme(nextTheme);
     document.documentElement.setAttribute("data-theme", nextTheme);
-    window.localStorage.setItem("theme", nextTheme);
+    safeStorageSet("theme", nextTheme);
   }
 
   function closeMobileMenu() {
@@ -499,7 +525,7 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
     ];
 
     for (const key of timerKeys) {
-      window.localStorage.removeItem(key);
+      safeStorageRemove(key);
     }
 
     try {
